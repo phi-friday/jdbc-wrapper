@@ -5,26 +5,30 @@ see more:
     https://peps.python.org/pep-0249/#cursor-objects
 """
 
+# pyright: reportIncompatibleMethodOverride=false
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Generic, Literal, overload
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, Generic, Literal, NoReturn, overload
 
-from typing_extensions import Self, TypeVar
+from typing_extensions import Self, TypeVar, override
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, Sequence
+    from types import TracebackType
 
     from pyjdbc2.types import Query
 
 __all__ = []
 
-_T = TypeVar("_T", bound="CursorABC")
+_T_co = TypeVar("_T_co", covariant=True, bound="CursorABC")
+_AT = TypeVar("_AT", bound="AsyncCursorABC")
 _R_co = TypeVar("_R_co", covariant=True, bound=tuple[Any, ...], default=tuple[Any, ...])
 _R2 = TypeVar("_R2", bound=tuple[Any, ...])
 
 
-class ConnectionABC(ABC, Generic[_T]):
+class ConnectionABC(ABC, Generic[_T_co]):
     @abstractmethod
     def close(self) -> None:
         """Close the connection now (rather than whenever `.__del__()` is called).
@@ -62,13 +66,83 @@ class ConnectionABC(ABC, Generic[_T]):
         """
 
     @abstractmethod
-    def cursor(self) -> _T:
+    def cursor(self) -> _T_co:
         """Return a new Cursor Object using the connection.
 
         If the database does not provide a direct cursor concept,
         the module will have to emulate cursors using other means
         to the extent needed by this specification.
         """
+
+    @property
+    @abstractmethod
+    def autocommit(self) -> bool: ...
+
+    @autocommit.setter
+    @abstractmethod
+    def autocommit(self, value: bool) -> None: ...
+
+    @property
+    @abstractmethod
+    def is_closed(self) -> bool:
+        """This read-only attribute returns `True` if the connection is closed,
+        `False` otherwise.
+
+        This attribute is useful to avoid exceptions when calling methods
+        on a closed connection.
+        """  # noqa: D205
+
+    @abstractmethod
+    def __enter__(self) -> Self: ...
+
+    @abstractmethod
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None: ...
+
+    @abstractmethod
+    def __del__(self) -> None: ...
+
+
+class AsyncConnectionABC(ConnectionABC[_AT], Generic[_AT]):
+    @abstractmethod
+    @override
+    async def close(self) -> None: ...
+
+    @abstractmethod
+    @override
+    async def commit(self) -> None: ...
+
+    @abstractmethod
+    @override
+    async def rollback(self) -> None: ...
+
+    @override
+    def __enter__(self) -> Self:
+        raise NotImplementedError("use aenter instead")
+
+    @override
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        raise NotImplementedError("use aexit instead")
+
+    @abstractmethod
+    async def __aenter__(self) -> Self: ...
+
+    @abstractmethod
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None: ...
 
 
 class CursorABC(ABC, Generic[_R_co]):
@@ -435,3 +509,186 @@ class CursorABC(ABC, Generic[_R_co]):
         in case the last executed statement modified more than one row, e.g.
         when using `INSERT` with `.executemany()`.
         """  # noqa: D205
+
+    @property
+    @abstractmethod
+    def is_closed(self) -> bool:
+        """This read-only attribute returns `True` if the cursor is closed,
+        `False` otherwise.
+
+        This attribute is useful to avoid exceptions when calling methods
+        on a closed cursor.
+        """  # noqa: D205
+
+    @abstractmethod
+    def __enter__(self) -> Self: ...
+
+    @abstractmethod
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None: ...
+
+    @abstractmethod
+    def __del__(self) -> None: ...
+
+
+class AsyncCursorABC(CursorABC[_R_co], Generic[_R_co]):
+    @abstractmethod
+    @override
+    async def callproc(
+        self, procname: str, parameters: Sequence[Any] | Mapping[str, Any] | None = None
+    ) -> None: ...
+
+    @abstractmethod
+    @override
+    async def close(self) -> None: ...
+
+    @overload
+    async def execute(
+        self,
+        operation: Query[_R2],
+        parameters: Sequence[Any] | Mapping[str, Any] | None = None,
+    ) -> AsyncCursorABC[_R2]: ...
+    @overload
+    async def execute(
+        self,
+        operation: str,
+        parameters: Sequence[Any] | Mapping[str, Any] | None = None,
+    ) -> AsyncCursorABC[Any]: ...
+    @overload
+    async def execute(
+        self,
+        operation: Query[_R2] | str,
+        parameters: Sequence[Any] | Mapping[str, Any] | None = None,
+    ) -> AsyncCursorABC[_R2] | AsyncCursorABC[Any]: ...
+    @override
+    async def execute(
+        self,
+        operation: Query[_R2] | str,
+        parameters: Sequence[Any] | Mapping[str, Any] | None = None,
+    ) -> AsyncCursorABC[_R2] | AsyncCursorABC[Any]:
+        return await (
+            self._execute(operation, parameters)
+            if isinstance(operation, str)
+            else self._execute(operation.statement, parameters)
+        )
+
+    @abstractmethod
+    @override
+    async def _execute(
+        self,
+        operation: str,
+        parameters: Sequence[Any] | Mapping[str, Any] | None = None,
+    ) -> AsyncCursorABC[Any]: ...
+
+    @overload
+    async def executemany(
+        self,
+        operation: Query[_R2],
+        seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
+    ) -> AsyncCursorABC[_R2]: ...
+    @overload
+    async def executemany(
+        self,
+        operation: str,
+        seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
+    ) -> AsyncCursorABC[Any]: ...
+    @overload
+    async def executemany(
+        self,
+        operation: Query[_R2] | str,
+        seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
+    ) -> AsyncCursorABC[_R2] | AsyncCursorABC[Any]: ...
+    @override
+    async def executemany(
+        self,
+        operation: Query[_R2] | str,
+        seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
+    ) -> CursorABC[_R2] | CursorABC[Any]:
+        return await (
+            self._executemany(operation, seq_of_parameters)
+            if isinstance(operation, str)
+            else self._executemany(operation.statement, seq_of_parameters)
+        )
+
+    @abstractmethod
+    @override
+    async def _executemany(
+        self,
+        operation: str,
+        seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
+    ) -> CursorABC[Any]: ...
+
+    @abstractmethod
+    @override
+    async def fetchone(self) -> _R_co | None: ...
+
+    @abstractmethod
+    @override
+    async def fetchmany(self, size: int = -1) -> Sequence[_R_co]: ...
+
+    @abstractmethod
+    @override
+    async def fetchall(self) -> Sequence[_R_co]: ...
+
+    @abstractmethod
+    @override
+    async def nextset(self) -> bool: ...
+
+    @abstractmethod
+    @override
+    async def setinputsizes(self, sizes: Sequence[int]) -> None: ...
+
+    @abstractmethod
+    @override
+    async def setoutputsize(self, size: int, column: int = -1) -> None: ...
+
+    @property
+    @abstractmethod
+    @override
+    def connection(self) -> AsyncConnectionABC[Self]: ...
+
+    @abstractmethod
+    @override
+    async def scroll(
+        self, value: int, mode: Literal["relative", "absolute"] = "relative"
+    ) -> None: ...
+
+    @abstractmethod
+    @override
+    async def next(self) -> _R_co: ...
+
+    @override
+    def __iter__(self) -> NoReturn:
+        raise NotImplementedError
+
+    @abstractmethod
+    def __aiter__(self) -> Self:
+        """Return self to make cursors compatible to the iteration protocol"""
+
+    @override
+    def __enter__(self) -> Self:
+        raise NotImplementedError("use aenter instead")
+
+    @override
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        raise NotImplementedError("use aexit instead")
+
+    @abstractmethod
+    async def __aenter__(self) -> Self: ...
+
+    @abstractmethod
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None: ...

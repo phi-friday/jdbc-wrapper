@@ -60,17 +60,26 @@ class Connection(ConnectionABC[Cursor[Any]]):
 
     @property
     @wrap_errors
+    @override
     def autocommit(self) -> bool:
         return self._jpype_connection.autocommit
 
     @autocommit.setter
     @wrap_errors
+    @override
     def autocommit(self, value: bool) -> None:
         self._jpype_connection.autocommit = value
 
+    @property
+    @override
+    def is_closed(self) -> bool:
+        return self._jpype_connection._closed  # noqa: SLF001
+
+    @override
     def __enter__(self) -> Self:
         return self
 
+    @override
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
@@ -79,6 +88,7 @@ class Connection(ConnectionABC[Cursor[Any]]):
     ) -> None:
         self.close()
 
+    @override
     def __del__(self) -> None:
         with suppress(Exception):
             self.close()

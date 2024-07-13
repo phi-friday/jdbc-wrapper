@@ -182,13 +182,20 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
         return (tuple(x) for x in iter(self._jpype_cursor))  # pyright: ignore[reportReturnType]
 
     @property
+    @override
+    def is_closed(self) -> bool:
+        return self._jpype_cursor._closed or self._jpype_cursor._jcx.isClosed()  # noqa: SLF001
+
+    @property
     @wrap_errors
     def lastrowid(self) -> Any:
         return self._jpype_cursor.lastrowid
 
+    @override
     def __enter__(self) -> Self:
         return self
 
+    @override
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
@@ -197,6 +204,7 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
     ) -> None:
         self.close()
 
+    @override
     def __del__(self) -> None:
         with suppress(Exception):
             self.close()
