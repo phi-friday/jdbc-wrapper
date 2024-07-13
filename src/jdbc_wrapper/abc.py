@@ -22,13 +22,14 @@ if TYPE_CHECKING:
 
 __all__ = []
 
-_T_co = TypeVar("_T_co", covariant=True, bound="CursorABC")
+_T = TypeVar("_T")
+_C_co = TypeVar("_C_co", covariant=True, bound="CursorABC")
 _AT = TypeVar("_AT", bound="AsyncCursorABC")
 _R_co = TypeVar("_R_co", covariant=True, bound=tuple[Any, ...], default=tuple[Any, ...])
 _R2 = TypeVar("_R2", bound=tuple[Any, ...])
 
 
-class ConnectionABC(ABC, Generic[_T_co]):
+class ConnectionABC(ABC, Generic[_C_co]):
     @abstractmethod
     def close(self) -> None:
         """Close the connection now (rather than whenever `.__del__()` is called).
@@ -66,7 +67,7 @@ class ConnectionABC(ABC, Generic[_T_co]):
         """
 
     @abstractmethod
-    def cursor(self) -> _T_co:
+    def cursor(self) -> _C_co:
         """Return a new Cursor Object using the connection.
 
         If the database does not provide a direct cursor concept,
@@ -685,3 +686,10 @@ class AsyncCursorABC(CursorABC[_R_co], Generic[_R_co]):
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> None: ...
+
+
+class TypePipeline(ABC, Generic[_T]):
+    @abstractmethod
+    def java_to_python(self, value: Any) -> _T: ...
+    @abstractmethod
+    def python_to_java(self, value: _T) -> Any: ...

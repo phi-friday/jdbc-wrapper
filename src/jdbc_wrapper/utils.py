@@ -12,7 +12,7 @@ from typing_extensions import TypeVar
 from jdbc_wrapper import exceptions
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
     from os import PathLike
 
 __all__ = []
@@ -61,12 +61,28 @@ class Java:
         jpype.java.lang.Thread.attach()
 
     def get_connection(
-        self, dsn: str, driver: str, *modules: str | PathLike[str], **driver_args: Any
+        self,
+        dsn: str,
+        driver: str,
+        *modules: str | PathLike[str],
+        driver_args: Mapping[str, Any],
+        adapters: Mapping[Any, Callable[[Any], Any]] | None = None,
+        converters: Mapping[Any, Callable[[Any], Any]] | None = None,
     ) -> jpype_dbapi2.Connection:
+        from jdbc_wrapper.pipeline import LazyAdapter, LazyConvertor
+
+        adapters = LazyAdapter(adapters)
+        converters = LazyConvertor(converters)
+
         self.assert_started()
         self.load_class(driver, *modules)
         return catch_errors(
-            jpype_dbapi2.connect, dsn, driver=driver, driver_args=driver_args
+            jpype_dbapi2.connect,
+            dsn,
+            driver=driver,
+            driver_args=driver_args,
+            adapters=adapters,
+            converters=converters,
         )
 
     @staticmethod

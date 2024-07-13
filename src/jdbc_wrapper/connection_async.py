@@ -13,7 +13,7 @@ from jdbc_wrapper.cursor_async import AsyncCursor
 from jdbc_wrapper.utils import run_in_thread
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Callable, Iterable, Mapping
     from os import PathLike
     from types import TracebackType
 
@@ -110,13 +110,17 @@ def connect(
     dsn: str,
     driver: str,
     modules: Iterable[str | PathLike[str]] | None = None,
-    driver_args: dict[str, Any] | None = None,
+    driver_args: Mapping[str, Any] | None = None,
+    adapters: Mapping[Any, Callable[[Any], Any]] | None = None,
+    converters: Mapping[Any, Callable[[Any], Any]] | None = None,
 ) -> AsyncConnection:
     """Constructor for creating a connection to the database.
 
     Returns a Connection Object.
     It takes a number of parameters which are database dependent.
     """
-    sync_connection = sync_connect(dsn, driver, modules, driver_args)
+    sync_connection = sync_connect(
+        dsn, driver, modules, driver_args, adapters, converters
+    )
 
     return AsyncConnection(sync_connection)

@@ -25,7 +25,7 @@ from jdbc_wrapper.exceptions import (
 from jdbc_wrapper.types import Binary, Datetime, Decimal, Float, Number, String, Text
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable, Mapping
     from os import PathLike
 
 __all__ = [
@@ -69,14 +69,18 @@ def connect(
     dsn: str,
     driver: str,
     modules: Iterable[str | PathLike[str]] | None = ...,
-    driver_args: dict[str, Any] | None = ...,
+    driver_args: Mapping[str, Any] | None = ...,
+    adapters: Mapping[Any, Callable[[Any], Any]] | None = None,
+    converters: Mapping[Any, Callable[[Any], Any]] | None = None,
 ) -> Connection: ...
 @overload
 def connect(
     dsn: str,
     driver: str,
     modules: Iterable[str | PathLike[str]] | None = ...,
-    driver_args: dict[str, Any] | None = ...,
+    driver_args: Mapping[str, Any] | None = ...,
+    adapters: Mapping[Any, Callable[[Any], Any]] | None = None,
+    converters: Mapping[Any, Callable[[Any], Any]] | None = None,
     *,
     is_async: Literal[False],
 ) -> Connection: ...
@@ -85,7 +89,9 @@ def connect(
     dsn: str,
     driver: str,
     modules: Iterable[str | PathLike[str]] | None = ...,
-    driver_args: dict[str, Any] | None = ...,
+    driver_args: Mapping[str, Any] | None = ...,
+    adapters: Mapping[Any, Callable[[Any], Any]] | None = None,
+    converters: Mapping[Any, Callable[[Any], Any]] | None = None,
     *,
     is_async: Literal[True],
 ) -> AsyncConnection: ...
@@ -94,7 +100,9 @@ def connect(
     dsn: str,
     driver: str,
     modules: Iterable[str | PathLike[str]] | None = ...,
-    driver_args: dict[str, Any] | None = ...,
+    driver_args: Mapping[str, Any] | None = ...,
+    adapters: Mapping[Any, Callable[[Any], Any]] | None = None,
+    converters: Mapping[Any, Callable[[Any], Any]] | None = None,
     *,
     is_async: bool = ...,
 ) -> Connection | AsyncConnection: ...
@@ -102,7 +110,9 @@ def connect(
     dsn: str,
     driver: str,
     modules: Iterable[str | PathLike[str]] | None = None,
-    driver_args: dict[str, Any] | None = None,
+    driver_args: Mapping[str, Any] | None = None,
+    adapters: Mapping[Any, Callable[[Any], Any]] | None = None,
+    converters: Mapping[Any, Callable[[Any], Any]] | None = None,
     *,
     is_async: bool = False,
 ) -> Connection | AsyncConnection:
@@ -112,8 +122,8 @@ def connect(
     It takes a number of parameters which are database dependent.
     """
     if is_async:
-        return _async_connect(dsn, driver, modules, driver_args)
-    return _sync_connect(dsn, driver, modules, driver_args)
+        return _async_connect(dsn, driver, modules, driver_args, adapters, converters)
+    return _sync_connect(dsn, driver, modules, driver_args, adapters, converters)
 
 
 def __getattr__(name: str) -> Any:  # pragma: no cover

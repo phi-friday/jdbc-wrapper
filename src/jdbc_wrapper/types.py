@@ -11,9 +11,11 @@ from typing_extensions import TypeAlias, TypeVar
 from jdbc_wrapper.utils import wrap_errors
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Mapping
 
     from _typeshed import Incomplete
+
+    from jdbc_wrapper.abc import TypePipeline
 
     class ResultSet:
         def __getattr__(self, name: str) -> Any: ...
@@ -26,6 +28,7 @@ _T = TypeVar("_T")
 _R = TypeVar("_R", bound=tuple[Any, ...], default=tuple[Any, ...])
 _R2 = TypeVar("_R2", bound=tuple[Any, ...])
 
+_registry = {}
 _JDBCMeta: TypeAlias = "Incomplete"
 _JDBCStmt: TypeAlias = "Incomplete"
 
@@ -108,18 +111,18 @@ class JDBCTypeSetter:
         )
 
 
-class BaseType(Generic[_J, _T]):
+class WrappedJDBCType(Generic[_J, _T]):
     __slots__ = ("_jdbc_type", "_python_type")
 
-    def __init__(
-        self, jdbc_type: _J, python_type: Callable[[Any], _T] | type[_T]
-    ) -> None:
+    def __init__(self, jdbc_type: _J, python_type: type[_T] | TypePipeline[_T]) -> None:
         self._jdbc_type = jdbc_type
         self._python_type = python_type
 
         if self.name and self.type_code:
             type_codes = cast(dict[str, int], TypeCodes)
             type_codes.setdefault(self.name, self.type_code)
+
+        _registry.setdefault(self._jdbc_type, self)
 
     @property
     def name(self) -> str | None:
@@ -128,6 +131,12 @@ class BaseType(Generic[_J, _T]):
     @property
     def type_code(self) -> int | None:
         return self._jdbc_type._code  # noqa: SLF001
+
+    @property
+    def pipeline(self) -> TypePipeline[_T]:
+        from jdbc_wrapper.pipeline import get_type_pipeline
+
+        return get_type_pipeline(self._python_type)
 
     @wrap_errors
     def get_value(self, result_set: ResultSet, index: int, is_callable: bool) -> _T:  # noqa: FBT001
@@ -143,7 +152,7 @@ class BaseType(Generic[_J, _T]):
     def __eq__(self, value: object) -> bool:
         return (
             value == self._jdbc_type
-            if isinstance(value, BaseType)
+            if isinstance(value, WrappedJDBCType)
             else self._jdbc_type == value
         )
 
@@ -151,58 +160,56 @@ class BaseType(Generic[_J, _T]):
         return hash(self._jdbc_type)
 
 
-def _return_self(obj: _T) -> _T:
-    return obj
-
-
 ### declare:: start
-Array = BaseType(jpype_dbapi2.ARRAY, list)
-Bigint = BaseType(jpype_dbapi2.BIGINT, int)
-Bit = BaseType(jpype_dbapi2.BIT, bool)
-Blob = BaseType(jpype_dbapi2.BLOB, bytes)
-Boolean = BaseType(jpype_dbapi2.BOOLEAN, bool)
-Char = BaseType(jpype_dbapi2.CHAR, str)
-Clob = BaseType(jpype_dbapi2.CLOB, str)
-Date = BaseType(jpype_dbapi2.DATE, date)
-Double = BaseType(jpype_dbapi2.DOUBLE, float)
-Integer = BaseType(jpype_dbapi2.INTEGER, int)
-Object = BaseType(jpype_dbapi2.OBJECT, _return_self)
-Longvarchar = BaseType(jpype_dbapi2.LONGVARCHAR, str)
-Longvarbinary = BaseType(jpype_dbapi2.LONGVARBINARY, bytes)
-Longvarchar = BaseType(jpype_dbapi2.LONGVARCHAR, str)
-Nchar = BaseType(jpype_dbapi2.NCHAR, str)
-Nclob = BaseType(jpype_dbapi2.NCLOB, str)
-Null: BaseType[JDBCType, None] = BaseType(jpype_dbapi2.NULL, _return_self)
-Numeric = BaseType(jpype_dbapi2.NUMERIC, _Decimal)
-Nvarchar = BaseType(jpype_dbapi2.NVARCHAR, str)
-Other = BaseType(jpype_dbapi2.OTHER, _return_self)
-Real = BaseType(jpype_dbapi2.REAL, float)
-Ref = BaseType(jpype_dbapi2.REF, _return_self)  # FIXME
-Rowid = BaseType(jpype_dbapi2.ROWID, _return_self)  # FIXME
-Resultset = BaseType(jpype_dbapi2.RESULTSET, _return_self)  # FIXME
-Smallint = BaseType(jpype_dbapi2.SMALLINT, int)
-Sqlxml = BaseType(jpype_dbapi2.SQLXML, str)
-Time = BaseType(jpype_dbapi2.TIME, time)
-Time_with_timezone = BaseType(jpype_dbapi2.TIME_WITH_TIMEZONE, time)
-Timestamp = BaseType(jpype_dbapi2.TIMESTAMP, datetime)
-Timestamp_with_timezone = BaseType(jpype_dbapi2.TIMESTAMP_WITH_TIMEZONE, datetime)
-Tinyint = BaseType(jpype_dbapi2.TINYINT, int)
-Varbinary = BaseType(jpype_dbapi2.VARBINARY, bytes)
-Varchar = BaseType(jpype_dbapi2.VARCHAR, str)
+Array = WrappedJDBCType(jpype_dbapi2.ARRAY, list)
+Bigint = WrappedJDBCType(jpype_dbapi2.BIGINT, int)
+Bit = WrappedJDBCType(jpype_dbapi2.BIT, bool)
+Blob = WrappedJDBCType(jpype_dbapi2.BLOB, bytes)
+Boolean = WrappedJDBCType(jpype_dbapi2.BOOLEAN, bool)
+Char = WrappedJDBCType(jpype_dbapi2.CHAR, str)
+Clob = WrappedJDBCType(jpype_dbapi2.CLOB, str)
+Date = WrappedJDBCType(jpype_dbapi2.DATE, date)
+Double = WrappedJDBCType(jpype_dbapi2.DOUBLE, float)
+Integer = WrappedJDBCType(jpype_dbapi2.INTEGER, int)
+Object = WrappedJDBCType(jpype_dbapi2.OBJECT, object)
+Longvarchar = WrappedJDBCType(jpype_dbapi2.LONGVARCHAR, str)
+Longvarbinary = WrappedJDBCType(jpype_dbapi2.LONGVARBINARY, bytes)
+Longvarchar = WrappedJDBCType(jpype_dbapi2.LONGVARCHAR, str)
+Nchar = WrappedJDBCType(jpype_dbapi2.NCHAR, str)
+Nclob = WrappedJDBCType(jpype_dbapi2.NCLOB, str)
+Null: WrappedJDBCType[JDBCType, None] = WrappedJDBCType(jpype_dbapi2.NULL, type(None))
+Numeric = WrappedJDBCType(jpype_dbapi2.NUMERIC, _Decimal)
+Nvarchar = WrappedJDBCType(jpype_dbapi2.NVARCHAR, str)
+Other = WrappedJDBCType(jpype_dbapi2.OTHER, object)
+Real = WrappedJDBCType(jpype_dbapi2.REAL, float)
+Ref = WrappedJDBCType(jpype_dbapi2.REF, object)
+Rowid = WrappedJDBCType(jpype_dbapi2.ROWID, object)
+Resultset = WrappedJDBCType(jpype_dbapi2.RESULTSET, object)
+Smallint = WrappedJDBCType(jpype_dbapi2.SMALLINT, int)
+Sqlxml = WrappedJDBCType(jpype_dbapi2.SQLXML, str)
+Time = WrappedJDBCType(jpype_dbapi2.TIME, time)
+Time_with_timezone = WrappedJDBCType(jpype_dbapi2.TIME_WITH_TIMEZONE, time)
+Timestamp = WrappedJDBCType(jpype_dbapi2.TIMESTAMP, datetime)
+Timestamp_with_timezone = WrappedJDBCType(
+    jpype_dbapi2.TIMESTAMP_WITH_TIMEZONE, datetime
+)
+Tinyint = WrappedJDBCType(jpype_dbapi2.TINYINT, int)
+Varbinary = WrappedJDBCType(jpype_dbapi2.VARBINARY, bytes)
+Varchar = WrappedJDBCType(jpype_dbapi2.VARCHAR, str)
 # alias
-String = BaseType(jpype_dbapi2.STRING, str)
-Text = BaseType(jpype_dbapi2.TEXT, str)
-Binary = BaseType(jpype_dbapi2.BINARY, bytes)
-Number = BaseType(jpype_dbapi2.NUMBER, int)
-Float = BaseType(jpype_dbapi2.FLOAT, float)
-Decimal = BaseType(jpype_dbapi2.DECIMAL, _Decimal)
-Datetime = BaseType(jpype_dbapi2.TIMESTAMP, datetime)
+String = WrappedJDBCType(jpype_dbapi2.STRING, str)
+Text = WrappedJDBCType(jpype_dbapi2.TEXT, str)
+Binary = WrappedJDBCType(jpype_dbapi2.BINARY, bytes)
+Number = WrappedJDBCType(jpype_dbapi2.NUMBER, int)
+Float = WrappedJDBCType(jpype_dbapi2.FLOAT, float)
+Decimal = WrappedJDBCType(jpype_dbapi2.DECIMAL, _Decimal)
+Datetime = WrappedJDBCType(jpype_dbapi2.TIMESTAMP, datetime)
 # special
-Ascii_stream = BaseType(jpype_dbapi2.ASCII_STREAM, str)
-Binary_stream = BaseType(jpype_dbapi2.BINARY_STREAM, bytes)
-Character_stream = BaseType(jpype_dbapi2.CHARACTER_STREAM, str)
-Ncharacter_stream = BaseType(jpype_dbapi2.NCHARACTER_STREAM, str)
-Url = BaseType(jpype_dbapi2.URL, str)
+Ascii_stream = WrappedJDBCType(jpype_dbapi2.ASCII_STREAM, str)
+Binary_stream = WrappedJDBCType(jpype_dbapi2.BINARY_STREAM, bytes)
+Character_stream = WrappedJDBCType(jpype_dbapi2.CHARACTER_STREAM, str)
+Ncharacter_stream = WrappedJDBCType(jpype_dbapi2.NCHARACTER_STREAM, str)
+Url = WrappedJDBCType(jpype_dbapi2.URL, str)
 ### declare:: end
 
 
@@ -217,3 +224,7 @@ def find_type_code(description: Description | int | str | None) -> int | None:
         return None
 
     return TypeCodes.get(description, None)
+
+
+def get_wrapped_type(jdbc_type: JDBCType) -> WrappedJDBCType[JDBCType, Any]:
+    return _registry[jdbc_type]

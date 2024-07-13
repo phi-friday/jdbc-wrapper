@@ -11,7 +11,7 @@ from jdbc_wrapper.cursor import Cursor
 from jdbc_wrapper.utils import Java, wrap_errors
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable, Mapping
     from os import PathLike
     from types import TracebackType
 
@@ -98,7 +98,9 @@ def connect(
     dsn: str,
     driver: str,
     modules: Iterable[str | PathLike[str]] | None = None,
-    driver_args: dict[str, Any] | None = None,
+    driver_args: Mapping[str, Any] | None = None,
+    adapters: Mapping[Any, Callable[[Any], Any]] | None = None,
+    converters: Mapping[Any, Callable[[Any], Any]] | None = None,
 ) -> Connection:
     """Constructor for creating a connection to the database.
 
@@ -107,6 +109,12 @@ def connect(
     """
     jvm = Java()
     jvm.start(*(() if modules is None else modules))
-    jpype_connection = jvm.get_connection(dsn, driver, **(driver_args or {}))
+    jpype_connection = jvm.get_connection(
+        dsn,
+        driver,
+        driver_args=(driver_args or {}),
+        adapters=adapters,
+        converters=converters,
+    )
 
     return Connection(jpype_connection)
