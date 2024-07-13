@@ -2,10 +2,16 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## how to install
+## ~~how to install~~
+> not yet published
 ```shell
 $ pip install pyjdbc2
 ```
+
+## TODO
+* [ ] tests
+* [ ] sqlalchemy dialect
+* [ ] converter? adapter?
 
 ## how to use
 ```bash
