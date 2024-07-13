@@ -61,6 +61,8 @@ __all__ = [
     "Text",
 ]
 
+__version__: str
+
 
 @overload
 def connect(
@@ -112,3 +114,13 @@ def connect(
     if is_async:
         return _async_connect(dsn, driver, modules, driver_args)
     return _sync_connect(dsn, driver, modules, driver_args)
+
+
+def __getattr__(name: str) -> Any:  # pragma: no cover
+    from importlib.metadata import version
+
+    if name == "__version__":
+        return version("jdbc_wrapper")
+
+    error_msg = f"The attribute named {name!r} is undefined."
+    raise AttributeError(error_msg)
