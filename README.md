@@ -5,7 +5,7 @@
 ## ~~how to install~~
 > not yet published
 ```shell
-$ pip install jdbc_wrapper
+$ pip install jdbc-wrapper
 ```
 
 ## TODO
