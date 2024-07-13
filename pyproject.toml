@@ -6,10 +6,23 @@ authors = [
     { name = "phi", email = "phi.friday@gmail.com" }
 ]
 dependencies = [
-    "jpype1==1.2.1",
+    "jpype1>=1.2.1",
     "typing-extensions>=4.4.0",
 ]
+license = { file = "LICENSE" }
 readme = "README.md"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Framework :: AnyIO",
+    "Framework :: AsyncIO",
+    "Framework :: Trio",
+]
 requires-python = ">= 3.9"
 
 [project.optional-dependencies]
