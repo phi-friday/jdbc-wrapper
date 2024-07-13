@@ -105,7 +105,7 @@ class AsyncConnection(AsyncConnectionABC[AsyncCursor[Any]]):
             raise
 
 
-async def connect(
+def connect(
     dsn: str,
     driver: str,
     modules: Iterable[str | PathLike[str]] | None = None,
