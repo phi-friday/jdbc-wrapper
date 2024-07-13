@@ -5,8 +5,6 @@ from functools import partial, wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import anyio
-import anyio.to_thread
 import jpype
 from jpype import dbapi2 as jpype_dbapi2
 from typing_extensions import TypeVar
@@ -134,5 +132,7 @@ def catch_errors(func: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:  # n
 
 
 async def run_in_thread(func: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:
+    import anyio
+
     func = partial(func, *args, **kwargs)
     return await anyio.to_thread.run_sync(func)

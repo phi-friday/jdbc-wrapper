@@ -3,7 +3,6 @@ from __future__ import annotations
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any
 
-import anyio
 from jpype import dbapi2 as jpype_dbapi2
 from typing_extensions import Self, TypeVar, override
 
@@ -93,6 +92,8 @@ class AsyncConnection(AsyncConnectionABC[AsyncCursor[Any]]):
     async def _safe_run_in_thread(
         self, func: Callable[..., _T], *args: Any, **kwargs: Any
     ) -> _T:
+        import anyio
+
         if self.is_closed:
             raise exceptions.OperationalError("Connection is closed")
 

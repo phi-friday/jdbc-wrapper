@@ -4,7 +4,6 @@ import threading
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Generic, Literal
 
-import anyio
 from jpype import dbapi2 as jpype_dbapi2
 from typing_extensions import Self, TypeVar, override
 
@@ -185,6 +184,8 @@ class AsyncCursor(AsyncCursorABC[_R_co], Generic[_R_co]):
     async def _safe_run_in_thread(
         self, func: Callable[..., _T], *args: Any, **kwargs: Any
     ) -> _T:
+        import anyio
+
         if self.is_closed:
             raise exceptions.OperationalError("Cursor is closed")
 
