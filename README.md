@@ -6,6 +6,8 @@
 > not yet published
 ```shell
 $ pip install jdbc-wrapper
+# or
+$ pip install "jdbc-wrapper @ git+https://github.com/phi-friday/jdbc-wrapper.git"
 ```
 
 ## TODO
