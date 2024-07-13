@@ -1,20 +1,24 @@
 from __future__ import annotations
 
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import MISSING, asdict, dataclass, field, fields
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import util as sa_util
 from sqlalchemy.engine.default import DefaultDialect
-from sqlalchemy.engine.interfaces import BindTyping
+from sqlalchemy.engine.interfaces import BindTyping, Dialect
 from sqlalchemy.sql.compiler import InsertmanyvaluesSentinelOpts
 from typing_extensions import override
+
+from jdbc_wrapper.exceptions import OperationalError
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping
     from types import ModuleType
 
     from sqlalchemy.types import TypeEngine
+
+    from jdbc_wrapper.abc import ConnectionABC, CursorABC
 
 _dataclass_options = {"frozen": True}
 if sys.version_info >= (3, 10):
@@ -38,6 +42,8 @@ class DialectSettings:
 
     driver: str
     """identifying name for the dialect's DBAPI"""
+
+    inherit: type[Dialect] | None = None
 
     supports_alter: bool = True
     """``True`` if the database supports ``ALTER TABLE`` - used only for
@@ -324,6 +330,26 @@ class DialectSettings:
     """Whether or not this dialect has a separate "terminate" implementation
     that does not block or require awaiting."""
 
+    def __post_init__(self) -> None:
+        if self.inherit is not None:
+            ignore = {"inherit", "name", "driver"}
+            for field in fields(self):
+                if field.name in ignore:
+                    continue
+
+                self_value = getattr(self, field.name)
+                default_value = (
+                    field.default_factory()
+                    if field.default_factory is not MISSING
+                    else field.default
+                )
+                if self_value != default_value:
+                    continue
+
+                inherit_value = getattr(self.inherit, field.name, MISSING)
+                if inherit_value is not MISSING:
+                    object.__setattr__(self, field.name, inherit_value)
+
 
 class JDBCDialectMeta(type):
     _jdbc_wrapper_dialect_settings: DialectSettings
@@ -337,7 +363,9 @@ class JDBCDialectMeta(type):
         **kwargs: Any,
     ) -> Any:
         settings: DialectSettings = namespace.pop("settings")
-        namespace.update(asdict(settings))
+        as_dict_settings = asdict(settings)
+        as_dict_settings.pop("inherit", None)
+        namespace.update(as_dict_settings)
         namespace["_jdbc_wrapper_dialect_settings"] = settings
         return super().__new__(cls, name, bases, namespace, **kwargs)
 
@@ -354,6 +382,51 @@ class JDBCDialectBase(DefaultDialect, metaclass=JDBCDialectMeta):
         import jdbc_wrapper
 
         return jdbc_wrapper
+
+    @property
+    def dbapi(self) -> ModuleType:
+        return self.import_dbapi()
+
+    @dbapi.setter
+    def dbapi(self, value: Any) -> None: ...
+
+    @override
+    def is_disconnect(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self,
+        e: Exception,
+        connection: ConnectionABC[Any] | None,
+        cursor: CursorABC[Any] | None,
+    ) -> bool:
+        if connection is not None:
+            return connection.is_closed
+        if cursor is not None:
+            return cursor.is_closed
+        return False
+
+    def _create_connect_args(
+        self, dsn: str, query: Mapping[str, Any]
+    ) -> dict[str, Any]:
+        driver_args = dict(query)
+        try:
+            driver: str = driver_args.pop("jdbc_driver")
+        except KeyError as exc:
+            raise OperationalError(
+                "The `jdbc_driver` key is required in the query string"
+            ) from exc
+
+        result: dict[str, Any] = {
+            "dsn": dsn,
+            "driver": driver,
+            "is_async": self.is_async,
+        }
+
+        modules = driver_args.pop("jdbc_modules", None)
+        result["driver_args"] = driver_args
+        if modules:
+            if isinstance(modules, str):
+                modules = (modules,)
+            result["modules"] = modules
+        return result
 
     ### settings:: start
     name: str

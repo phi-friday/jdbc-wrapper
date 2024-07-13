@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import importlib
+import importlib.util
 from typing import TYPE_CHECKING, Any, Literal, overload
 
+from jdbc_wrapper._sqlalchemy import register_in_sqlalchemy
 from jdbc_wrapper.connection import Connection
 from jdbc_wrapper.connection import connect as _sync_connect
 from jdbc_wrapper.connection_async import AsyncConnection
@@ -124,6 +127,11 @@ def connect(
     if is_async:
         return _async_connect(dsn, driver, modules, driver_args, adapters, converters)
     return _sync_connect(dsn, driver, modules, driver_args, adapters, converters)
+
+
+_spec = importlib.util.find_spec("sqlalchemy")
+if _spec is not None:
+    register_in_sqlalchemy()
 
 
 def __getattr__(name: str) -> Any:  # pragma: no cover
