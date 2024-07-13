@@ -80,6 +80,18 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
+# output:
+# SLF4J(W): No SLF4J providers were found.
+# SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+# SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+# [('StudentID', 'INTEGER', 2147483647, 2147483647, 0, 0, 1),
+#  ('Name', 'TEXT', 2147483647, 2147483647, 0, 0, 0),
+#  ('Major', 'TEXT', 2147483647, 2147483647, 0, 0, 1),
+#  ('Year', 'INTEGER', 2147483647, 2147483647, 0, 0, 1),
+#  ('GPA', 'REAL', 2147483647, 2147483647, 0, 0, 1)]
+# [(1, 'Alice', 'CS', 3, 3.5)]
+# [('date', 'TEXT', 2147483647, 2147483647, 0, 0, 1)]
+# [('2024-07-13 10:52:28',)]
 ```
 
 ## License
