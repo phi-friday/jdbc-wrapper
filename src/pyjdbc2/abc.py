@@ -505,6 +505,14 @@ class CursorABC(ABC, Generic[_R_co]):
         on a closed cursor.
         """  # noqa: D205
 
+    @property
+    @abstractmethod
+    def thread_id(self) -> int: ...
+
+    @thread_id.setter
+    @abstractmethod
+    def thread_id(self, value: int) -> None: ...
+
     @abstractmethod
     def __enter__(self) -> Self: ...
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Generic, Literal
 
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
 __all__ = []
 
 _T = TypeVar("_T")
+_F = TypeVar("_F", bound="Callable[..., Any]")
 _R_co = TypeVar("_R_co", covariant=True, bound=tuple[Any, ...], default=tuple[Any, ...])
 _R2 = TypeVar("_R2", bound=tuple[Any, ...])
 
@@ -152,6 +154,16 @@ class AsyncCursor(AsyncCursorABC[_R_co], Generic[_R_co]):
     def is_closed(self) -> bool:
         return self._sync_cursor.is_closed
 
+    @property
+    @override
+    def thread_id(self) -> int:
+        return self._sync_cursor.thread_id
+
+    @thread_id.setter
+    @override
+    def thread_id(self, value: int) -> None:
+        self._sync_cursor.thread_id = value
+
     @override
     async def __aenter__(self) -> Self:
         return self
@@ -176,10 +188,24 @@ class AsyncCursor(AsyncCursorABC[_R_co], Generic[_R_co]):
         if self.is_closed:
             raise exceptions.OperationalError("Cursor is closed")
 
+        wrapped = self._wrap_thread_id_error(func)
+
         try:
-            return await run_in_thread(func, *args, **kwargs)
+            return await run_in_thread(wrapped, *args, **kwargs)
         except (jpype_dbapi2.Error, exceptions.Error):
             with anyio.CancelScope(shield=True):
                 if not self.connection.is_closed:
                     await self.connection.close()
             raise
+
+    def _wrap_thread_id_error(self, func: _F) -> _F:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            origin = self.thread_id
+            try:
+                self.thread_id = threading.get_ident()
+                result = func(*args, **kwargs)
+            finally:
+                self.thread_id = origin
+            return result
+
+        return wrapper  # pyright: ignore[reportReturnType]

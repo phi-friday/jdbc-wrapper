@@ -176,6 +176,18 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
     def lastrowid(self) -> Any:
         return self._jpype_cursor.lastrowid
 
+    @property
+    @wrap_errors
+    @override
+    def thread_id(self) -> int:
+        return self._jpype_cursor._thread  # noqa: SLF001
+
+    @thread_id.setter
+    @wrap_errors
+    @override
+    def thread_id(self, value: int) -> None:
+        self._jpype_cursor._thread = value  # noqa: SLF001
+
     @override
     def __enter__(self) -> Self:
         return self
