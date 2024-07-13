@@ -5,10 +5,10 @@ def register_in_sqlalchemy() -> None:
     from sqlalchemy.dialects import registry
 
     registry.register(
-        "jdbc_wrapper.postgresql",
+        "postgresql.jdbc_wrapper",
         "jdbc_wrapper._sqlalchemy.postgresql",
         "PGJDBCDialect",
     )
     registry.register(
-        "jdbc_wrapper.mssql", "jdbc_wrapper._sqlalchemy.mssql", "MSJDBCDialect"
+        "mssql.jdbc_wrapper", "jdbc_wrapper._sqlalchemy.mssql", "MSJDBCDialect"
     )

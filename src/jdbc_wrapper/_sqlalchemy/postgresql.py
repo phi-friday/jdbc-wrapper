@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 class PGJDBCDialect(JDBCDialectBase, PGDialect):
     settings = DialectSettings(
-        name="postgresql", driver="postgresql", inherit=PGDialect
+        name="postgresql", driver="jdbc_wrapper", inherit=PGDialect
     )
 
     @override
