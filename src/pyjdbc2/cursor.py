@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
     from jpype import dbapi2 as jpype_dbapi2
 
-    from pyjdbc2.types import Query
+    from pyjdbc2.types import Description, Query
 
 __all__ = []
 
@@ -43,22 +43,7 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
     @property
     @wrap_errors
     @override
-    def description(
-        self,
-    ) -> (
-        Sequence[
-            tuple[
-                str,
-                int | None,
-                int | None,
-                int | None,
-                int | None,
-                int | None,
-                bool | None,
-            ]
-        ]
-        | None
-    ):
+    def description(self) -> Sequence[Description] | None:
         return self._jpype_cursor.description
 
     @property

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, time
 from decimal import Decimal as _Decimal
-from typing import TYPE_CHECKING, Any, Generic
+from typing import TYPE_CHECKING, Any, Generic, cast
 
 from jpype import dbapi2 as jpype_dbapi2
 from jpype.dbapi2 import JDBCType
@@ -11,7 +11,7 @@ from typing_extensions import TypeAlias, TypeVar
 from pyjdbc2.utils import wrap_errors
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
 
     from _typeshed import Incomplete
 
@@ -28,6 +28,12 @@ _R2 = TypeVar("_R2", bound=tuple[Any, ...])
 
 _JDBCMeta: TypeAlias = "Incomplete"
 _JDBCStmt: TypeAlias = "Incomplete"
+
+Description: TypeAlias = """tuple[
+    str, int | str | None, int | None, int | None, int | None, int | None, bool | None
+]"""
+
+TypeCodes: Mapping[str, int] = {}
 
 
 class Query(Generic[_R]):
@@ -111,6 +117,14 @@ class BaseType(Generic[_J, _T]):
         self._jdbc_type = jdbc_type
         self._python_type = python_type
 
+        if self.name and self.type_code:
+            type_codes = cast(dict[str, int], TypeCodes)
+            type_codes.setdefault(self.name, self.type_code)
+
+    @property
+    def name(self) -> str | None:
+        return self._jdbc_type._name  # noqa: SLF001
+
     @property
     def type_code(self) -> int | None:
         return self._jdbc_type._code  # noqa: SLF001
@@ -190,3 +204,16 @@ Character_stream = BaseType(jpype_dbapi2.CHARACTER_STREAM, str)
 Ncharacter_stream = BaseType(jpype_dbapi2.NCHARACTER_STREAM, str)
 Url = BaseType(jpype_dbapi2.URL, str)
 ### declare:: end
+
+
+def find_type_code(description: Description | int | str | None) -> int | None:
+    if isinstance(description, tuple):
+        description = description[1]
+
+    if isinstance(description, int):
+        return description
+
+    if not description:
+        return None
+
+    return TypeCodes.get(description, None)

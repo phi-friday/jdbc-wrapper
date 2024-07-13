@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, Sequence
     from types import TracebackType
 
-    from pyjdbc2.types import Query
+    from pyjdbc2.types import Description, Query
 
 __all__ = []
 
@@ -148,22 +148,7 @@ class AsyncConnectionABC(ConnectionABC[_AT], Generic[_AT]):
 class CursorABC(ABC, Generic[_R_co]):
     @property
     @abstractmethod
-    def description(
-        self,
-    ) -> (
-        Sequence[
-            tuple[
-                str,
-                int | None,
-                int | None,
-                int | None,
-                int | None,
-                int | None,
-                bool | None,
-            ]
-        ]
-        | None
-    ):
+    def description(self) -> Sequence[Description] | None:
         """This read-only attribute is a sequence of 7-item sequences.
 
         Each of these sequences contains information describing one result column:

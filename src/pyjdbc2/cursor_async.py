@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
     from types import TracebackType
 
-    from pyjdbc2.types import Query
+    from pyjdbc2.types import Description, Query
 
 __all__ = []
 
@@ -44,22 +44,7 @@ class AsyncCursor(AsyncCursorABC[_R_co], Generic[_R_co]):
 
     @property
     @override
-    def description(
-        self,
-    ) -> (
-        Sequence[
-            tuple[
-                str,
-                int | None,
-                int | None,
-                int | None,
-                int | None,
-                int | None,
-                bool | None,
-            ]
-        ]
-        | None
-    ):
+    def description(self) -> Sequence[Description] | None:
         return self._sync_cursor.description
 
     @property
