@@ -1,6 +1,6 @@
 {
     "include": [
-        "src/pyjdbc2",
+        "src/jdbc_wrapper",
         "tests"
     ],
     "typeCheckingMode": "strict",

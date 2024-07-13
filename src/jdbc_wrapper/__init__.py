@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal, overload
 
-from pyjdbc2.connection import Connection
-from pyjdbc2.connection import connect as _sync_connect
-from pyjdbc2.connection_async import AsyncConnection
-from pyjdbc2.connection_async import connect as _async_connect
-from pyjdbc2.const import API_LEVEL as apilevel  # noqa: N811
-from pyjdbc2.const import PARAM_STYLE as paramstyle  # noqa: N811
-from pyjdbc2.const import THREAD_SAFETY as threadsafety  # noqa: N811
-from pyjdbc2.cursor import Cursor
-from pyjdbc2.cursor_async import AsyncCursor
-from pyjdbc2.exceptions import (
+from jdbc_wrapper.connection import Connection
+from jdbc_wrapper.connection import connect as _sync_connect
+from jdbc_wrapper.connection_async import AsyncConnection
+from jdbc_wrapper.connection_async import connect as _async_connect
+from jdbc_wrapper.const import API_LEVEL as apilevel  # noqa: N811
+from jdbc_wrapper.const import PARAM_STYLE as paramstyle  # noqa: N811
+from jdbc_wrapper.const import THREAD_SAFETY as threadsafety  # noqa: N811
+from jdbc_wrapper.cursor import Cursor
+from jdbc_wrapper.cursor_async import AsyncCursor
+from jdbc_wrapper.exceptions import (
     DatabaseError,
     DataError,
     Error,
@@ -22,7 +22,7 @@ from pyjdbc2.exceptions import (
     OperationalError,
     ProgrammingError,
 )
-from pyjdbc2.types import Binary, Datetime, Decimal, Float, Number, String, Text
+from jdbc_wrapper.types import Binary, Datetime, Decimal, Float, Number, String, Text
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

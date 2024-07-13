@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Self, override
 
-from pyjdbc2 import exceptions
-from pyjdbc2.abc import ConnectionABC
-from pyjdbc2.cursor import Cursor
-from pyjdbc2.utils import Java, wrap_errors
+from jdbc_wrapper import exceptions
+from jdbc_wrapper.abc import ConnectionABC
+from jdbc_wrapper.cursor import Cursor
+from jdbc_wrapper.utils import Java, wrap_errors
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

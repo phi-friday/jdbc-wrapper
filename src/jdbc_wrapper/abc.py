@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, Sequence
     from types import TracebackType
 
-    from pyjdbc2.types import Description, Query
+    from jdbc_wrapper.types import Description, Query
 
 __all__ = []
 

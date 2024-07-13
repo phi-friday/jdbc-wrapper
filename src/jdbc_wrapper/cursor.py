@@ -6,15 +6,15 @@ from typing import TYPE_CHECKING, Any, Generic, Literal
 
 from typing_extensions import Self, TypeVar, override
 
-from pyjdbc2.abc import ConnectionABC, CursorABC
-from pyjdbc2.utils import wrap_errors
+from jdbc_wrapper.abc import ConnectionABC, CursorABC
+from jdbc_wrapper.utils import wrap_errors
 
 if TYPE_CHECKING:
     from types import TracebackType
 
     from jpype import dbapi2 as jpype_dbapi2
 
-    from pyjdbc2.types import Description, Query
+    from jdbc_wrapper.types import Description, Query
 
 __all__ = []
 

@@ -7,15 +7,15 @@ from typing import TYPE_CHECKING, Any, Generic, Literal
 from jpype import dbapi2 as jpype_dbapi2
 from typing_extensions import Self, TypeVar, override
 
-from pyjdbc2 import exceptions
-from pyjdbc2.abc import AsyncConnectionABC, AsyncCursorABC, CursorABC
-from pyjdbc2.utils import run_in_thread
+from jdbc_wrapper import exceptions
+from jdbc_wrapper.abc import AsyncConnectionABC, AsyncCursorABC, CursorABC
+from jdbc_wrapper.utils import run_in_thread
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
     from types import TracebackType
 
-    from pyjdbc2.types import Description, Query
+    from jdbc_wrapper.types import Description, Query
 
 __all__ = []
 

@@ -8,7 +8,7 @@ from jpype import dbapi2 as jpype_dbapi2
 from jpype.dbapi2 import JDBCType
 from typing_extensions import TypeAlias, TypeVar
 
-from pyjdbc2.utils import wrap_errors
+from jdbc_wrapper.utils import wrap_errors
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping

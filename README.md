@@ -1,11 +1,11 @@
-# pyjdbc2
+# jdbc-wrapper
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## ~~how to install~~
 > not yet published
 ```shell
-$ pip install pyjdbc2
+$ pip install jdbc_wrapper
 ```
 
 ## TODO
@@ -43,7 +43,7 @@ from __future__ import annotations
 
 from pprint import pprint
 
-from pyjdbc2 import connect
+from jdbc_wrapper import connect
 
 
 def main() -> None:
@@ -102,4 +102,4 @@ if __name__ == "__main__":
 
 ## License
 
-MIT, see [LICENSE](https://github.com/phi-friday/pyjdbc2/blob/main/LICENSE).
+MIT, see [LICENSE](https://github.com/phi-friday/jdbc_wrapper/blob/main/LICENSE).

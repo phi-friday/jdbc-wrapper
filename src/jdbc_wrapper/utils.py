@@ -9,7 +9,7 @@ import jpype
 from jpype import dbapi2 as jpype_dbapi2
 from typing_extensions import TypeVar
 
-from pyjdbc2 import exceptions
+from jdbc_wrapper import exceptions
 
 if TYPE_CHECKING:
     from collections.abc import Callable

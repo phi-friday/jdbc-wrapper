@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING, Any
 from jpype import dbapi2 as jpype_dbapi2
 from typing_extensions import Self, TypeVar, override
 
-from pyjdbc2 import exceptions
-from pyjdbc2.abc import AsyncConnectionABC, ConnectionABC, CursorABC
-from pyjdbc2.connection import connect as sync_connect
-from pyjdbc2.cursor_async import AsyncCursor
-from pyjdbc2.utils import run_in_thread
+from jdbc_wrapper import exceptions
+from jdbc_wrapper.abc import AsyncConnectionABC, ConnectionABC, CursorABC
+from jdbc_wrapper.connection import connect as sync_connect
+from jdbc_wrapper.cursor_async import AsyncCursor
+from jdbc_wrapper.utils import run_in_thread
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable

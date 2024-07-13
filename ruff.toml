@@ -99,7 +99,7 @@ skip-magic-trailing-comma = true
 max-args = 10
 
 [lint.isort]
-known-local-folder = ["pyjdbc2"]
+known-local-folder = ["jdbc_wrapper"]
 required-imports = ["from __future__ import annotations"]
 # ruff format
 force-single-line = false
