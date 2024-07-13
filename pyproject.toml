@@ -2,13 +2,8 @@
 name = "jdbc-wrapper"
 version = "0.1.0"
 description = "Add your description here"
-authors = [
-    { name = "phi", email = "phi.friday@gmail.com" }
-]
-dependencies = [
-    "jpype1>=1.2.1",
-    "typing-extensions>=4.4.0",
-]
+authors = [{ name = "phi", email = "phi.friday@gmail.com" }]
+dependencies = ["jpype1>=1.2.1", "typing-extensions>=4.4.0"]
 license = { file = "LICENSE" }
 readme = "README.md"
 classifiers = [
@@ -27,6 +22,7 @@ requires-python = ">= 3.9"
 
 [project.optional-dependencies]
 async = ["anyio>=3.1.0"]
+sqlalchemy = ["sqlalchemy[asyncio]>=2"]
 
 [build-system]
 requires = ["hatchling"]
@@ -34,10 +30,7 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = [
-    "ipykernel>=6.29.5",
-    "ruff==0.5.1",
-]
+dev-dependencies = ["ipykernel>=6.29.5", "ruff==0.5.1"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
