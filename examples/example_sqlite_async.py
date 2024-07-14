@@ -25,7 +25,7 @@ async def main(sqlite_jar_url: str, slf4j_jar_url: str) -> None:
             await futures
 
         async with connect(
-            "jdbc:sqlite:memory:",
+            "jdbc:sqlite::memory:",
             driver="org.sqlite.JDBC",
             modules=[sqlite_jar, slf4j_jar],
             is_async=True,

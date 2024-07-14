@@ -90,7 +90,7 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
-"src/examples/**/example_*.py" = ['INP001', "T203", "D", "S310"]
+"examples/**/example_*.py" = ['INP001', "T203", "D", "S310"]
 
 [format]
 indent-style = "space"
