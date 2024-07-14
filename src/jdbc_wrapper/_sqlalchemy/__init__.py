@@ -22,3 +22,11 @@ def register_in_sqlalchemy() -> None:
         "jdbc_wrapper._sqlalchemy.mssql",
         "AsyncMSJDBCDialect",
     )
+    registry.register(
+        "sqlite.jdbc_wrapper", "jdbc_wrapper._sqlalchemy.sqlite", "SQJDBCDialect"
+    )
+    registry.register(
+        "sqlite.jdbc_async_wrapper",
+        "jdbc_wrapper._sqlalchemy.sqlite",
+        "AsyncSQJDBCDialect",
+    )
