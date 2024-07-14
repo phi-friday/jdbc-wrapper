@@ -24,20 +24,25 @@ _T = TypeVar("_T")
 class Java:
     def __init__(self, jvm_path: str | PathLike[str] | None = None) -> None:
         self._jvm_path = jvm_path
+        self._attatched = False
 
     def start(self, *modules: str | PathLike[str], **kwargs: Any) -> None:
         if self.is_started():
             self.attach_thread()
             return
 
-        if not modules:
-            jpype.startJVM(str(self.jvm_path), **kwargs)
-            return
+        self.add_modules(*modules)
+        jpype.startJVM(jvmpath=self.jvm_path, **kwargs)
+        self._attatched = True
 
-        module = "-Djava.class.path=" + ":".join(
-            str(Path(x).resolve()) for x in modules
-        )
-        jpype.startJVM(str(self.jvm_path), module, **kwargs)
+    def attach(self) -> None:
+        self.attach_thread()
+        self._attatched = True
+
+    def add_modules(self, *modules: str | PathLike[str]) -> None:
+        for module in modules:
+            path = Path(module).resolve()
+            jpype.addClassPath(path)
 
     @property
     def jvm_path(self) -> Path:
@@ -56,8 +61,6 @@ class Java:
 
     @classmethod
     def attach_thread(cls) -> None:
-        if not cls.is_started():
-            return
         jpype.java.lang.Thread.attach()
 
     def get_connection(
