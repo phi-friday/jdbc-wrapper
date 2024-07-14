@@ -103,8 +103,7 @@ class Java:
 
         self.assert_started()
         jdbc_driver = self.load_driver_instance(driver, *modules)
-        driver_manager = jpype.java.sql.DriverManager
-        driver_manager.registerDriver(jdbc_driver)
+        jpype.java.sql.DriverManager.registerDriver(jdbc_driver)
 
         info = jpype.java.util.Properties()
         for key, value in driver_args.items():
