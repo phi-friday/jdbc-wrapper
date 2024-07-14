@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any
 
@@ -10,7 +11,6 @@ from jdbc_wrapper import exceptions
 from jdbc_wrapper.abc import AsyncConnectionABC, ConnectionABC, CursorABC
 from jdbc_wrapper.connection import connect as sync_connect
 from jdbc_wrapper.cursor_async import AsyncCursor
-from jdbc_wrapper.utils import run_in_thread
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
@@ -92,17 +92,15 @@ class AsyncConnection(AsyncConnectionABC[AsyncCursor[Any]]):
     async def _safe_run_in_thread(
         self, func: Callable[..., _T], *args: Any, **kwargs: Any
     ) -> _T:
-        import anyio
+        from jdbc_wrapper.utils_async import ensure_close, greenlet_spawn
 
         if self.is_closed:
             raise exceptions.OperationalError("Connection is closed")
 
         try:
-            return await run_in_thread(func, *args, **kwargs)
+            return await greenlet_spawn(func, *args, **kwargs)
         except (jpype_dbapi2.Error, exceptions.Error):
-            with anyio.CancelScope(shield=True):
-                if not self.is_closed:
-                    await self.close()
+            await asyncio.shield(ensure_close(self))
             raise
 
 

@@ -1,7 +1,7 @@
 # pyright: reportAttributeAccessIssue=false
 from __future__ import annotations
 
-from functools import partial, wraps
+from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -145,10 +145,3 @@ def catch_errors(func: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:  # n
         raise exceptions.Warning(*exc.args) from exc
     except jpype_dbapi2.Error as exc:
         raise exceptions.Error(*exc.args) from exc
-
-
-async def run_in_thread(func: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:
-    import anyio
-
-    func = partial(func, *args, **kwargs)
-    return await anyio.to_thread.run_sync(func)

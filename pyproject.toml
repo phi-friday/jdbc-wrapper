@@ -21,8 +21,8 @@ classifiers = [
 requires-python = ">= 3.9"
 
 [project.optional-dependencies]
-async = ["anyio>=3.1.0"]
-sqlalchemy = ["sqlalchemy[asyncio]>=2"]
+asyncio = ["greenlet"]
+sqlalchemy = ["sqlalchemy[asyncio]>=2", "greenlet"]
 
 [build-system]
 requires = ["hatchling"]
@@ -30,7 +30,7 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = ["ipykernel>=6.29.5", "ruff==0.5.1"]
+dev-dependencies = ["ipykernel>=6.29.5", "ruff==0.5.1", "types-greenlet"]
 
 [tool.hatch.metadata]
 allow-direct-references = true

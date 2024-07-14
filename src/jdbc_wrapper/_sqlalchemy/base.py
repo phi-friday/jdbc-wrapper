@@ -1,18 +1,20 @@
 from __future__ import annotations
 
+import asyncio
 import sys
+from concurrent.futures import ThreadPoolExecutor, wait
 from contextlib import suppress
 from dataclasses import MISSING, asdict, dataclass, field, fields
 from functools import wraps
 from types import ModuleType, TracebackType
 from typing import TYPE_CHECKING, Any, Literal
 
+import greenlet
 from sqlalchemy import pool
 from sqlalchemy import util as sa_util
 from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.engine.interfaces import AdaptedConnection, BindTyping, Dialect
 from sqlalchemy.sql.compiler import InsertmanyvaluesSentinelOpts
-from sqlalchemy.util import await_only
 from typing_extensions import ParamSpec, Self, TypeVar, override
 
 from jdbc_wrapper.abc import (
@@ -22,6 +24,7 @@ from jdbc_wrapper.abc import (
     CursorABC,
 )
 from jdbc_wrapper.exceptions import OperationalError
+from jdbc_wrapper.utils_async import await_, check_async_greenlet, check_in_sa_greenlet
 
 if TYPE_CHECKING:
     from collections.abc import (
@@ -744,9 +747,33 @@ def wrap_async(
 ) -> Callable[_P, _T]:
     @wraps(func)
     def inner(*args: _P.args, **kwargs: _P.kwargs) -> _T:
-        return await_only(func(*args, **kwargs))
+        current = greenlet.getcurrent()
+        if not check_async_greenlet(current) and not check_in_sa_greenlet(current):
+            with ThreadPoolExecutor(1) as pool:
+                future = pool.submit(_run, func, *args, **kwargs)
+                wait([future], return_when="ALL_COMPLETED")
+                return future.result()
+
+        coro = func(*args, **kwargs)
+        return await_(coro)
 
     return inner
+
+
+async def _await(
+    func: Callable[_P, Awaitable[_T]] | Callable[_P, Coroutine[Any, Any, _T]],
+    *args: _P.args,
+    **kwargs: _P.kwargs,
+) -> _T:
+    return await func(*args, **kwargs)
+
+
+def _run(
+    func: Callable[_P, Awaitable[_T]] | Callable[_P, Coroutine[Any, Any, _T]],
+    *args: _P.args,
+    **kwargs: _P.kwargs,
+) -> _T:
+    return asyncio.run(_await(func, *args, **kwargs))
 
 
 class AsyncConnection(AdaptedConnection, ConnectionABC[Any]):
@@ -964,7 +991,7 @@ class AsyncCursor(CursorABC[Any]):
 
     def __del__(self) -> None:
         with suppress(Exception):
-            self.close()
+            self._cursor._sync_cursor.close()  # type: ignore # noqa: SLF001
 
 
 class DbapiModule(ModuleType):

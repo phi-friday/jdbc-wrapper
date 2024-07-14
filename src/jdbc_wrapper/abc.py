@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any, Generic, Literal, NoReturn, overload
 from typing_extensions import Self, TypeVar, override
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping, Sequence
+    from collections.abc import Generator, Iterator, Mapping, Sequence
     from types import TracebackType
 
     from jdbc_wrapper.types import Description, Query
@@ -662,6 +662,10 @@ class AsyncCursorABC(CursorABC[_R_co], Generic[_R_co]):
     @abstractmethod
     def __aiter__(self) -> Self:
         """Return self to make cursors compatible to the iteration protocol"""
+
+    def __await__(self) -> Generator[None, None, Self]:
+        yield
+        return self
 
     @override
     def __enter__(self) -> Self:

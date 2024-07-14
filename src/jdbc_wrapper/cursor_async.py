@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import threading
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Generic, Literal
@@ -9,7 +10,6 @@ from typing_extensions import Self, TypeVar, override
 
 from jdbc_wrapper import exceptions
 from jdbc_wrapper.abc import AsyncConnectionABC, AsyncCursorABC, CursorABC
-from jdbc_wrapper.utils import run_in_thread
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
@@ -184,7 +184,7 @@ class AsyncCursor(AsyncCursorABC[_R_co], Generic[_R_co]):
     async def _safe_run_in_thread(
         self, func: Callable[..., _T], *args: Any, **kwargs: Any
     ) -> _T:
-        import anyio
+        from jdbc_wrapper.utils_async import ensure_close, greenlet_spawn
 
         if self.is_closed:
             raise exceptions.OperationalError("Cursor is closed")
@@ -192,11 +192,9 @@ class AsyncCursor(AsyncCursorABC[_R_co], Generic[_R_co]):
         wrapped = self._wrap_thread_id_error(func)
 
         try:
-            return await run_in_thread(wrapped, *args, **kwargs)
+            return await greenlet_spawn(wrapped, *args, **kwargs)
         except (jpype_dbapi2.Error, exceptions.Error):
-            with anyio.CancelScope(shield=True):
-                if not self.connection.is_closed:
-                    await self.connection.close()
+            await asyncio.shield(ensure_close(self))
             raise
 
     def _wrap_thread_id_error(self, func: _F) -> _F:
