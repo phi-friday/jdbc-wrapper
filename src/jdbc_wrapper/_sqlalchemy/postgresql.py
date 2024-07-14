@@ -34,12 +34,14 @@ class PGJDBCDialect(JDBCDialectBase, PGDialect):
         if url.database:
             dsn += f"{url.database}"
         dsn += "?"
-        if url.username:
-            dsn += f"user={url.username}&"
-        if url.password:
-            dsn += f"password={url.password}&"
 
-        args = self._create_connect_args(dsn=dsn, query=url.query)
+        query = dict(url.query)
+        if url.username:
+            query["user"] = url.username
+        if url.password:
+            query["password"] = url.password
+
+        args = self._create_connect_args(dsn=dsn, query=query)
         return (), args
 
 

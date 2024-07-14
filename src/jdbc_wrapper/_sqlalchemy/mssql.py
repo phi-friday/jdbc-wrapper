@@ -33,15 +33,16 @@ class MSJDBCDialect(JDBCDialectBase, MSDialect):
         dsn += ";"
         if url.database:
             dsn += f"databaseName={url.database};"
-        if url.username:
-            dsn += f"user={url.username};"
-        if url.password:
-            dsn += f"password={url.password};"
 
         query = dict(url.query)
         encrypt = query.pop("encrypt", None)
         if encrypt:
             dsn += f"encrypt={encrypt};"
+
+        if url.username:
+            query["user"] = url.username
+        if url.password:
+            query["password"] = url.password
 
         args = self._create_connect_args(dsn=dsn, query=query)
         return (), args

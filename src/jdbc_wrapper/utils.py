@@ -45,6 +45,10 @@ class Java:
             jpype.addClassPath(path)
 
     @property
+    def modules(self) -> set[str]:
+        return set(jpype.getClassPath().split(":"))
+
+    @property
     def jvm_path(self) -> Path:
         if not self._jvm_path:
             self._jvm_path = jpype.getDefaultJVMPath()
@@ -78,26 +82,33 @@ class Java:
         converters = LazyConvertor(converters)
 
         self.assert_started()
-        self.load_class(driver, *modules)
-        return catch_errors(
-            jpype_dbapi2.connect,
-            dsn,
-            driver=driver,
-            driver_args=driver_args,
+        jdbc_driver = self.load_driver_instance(driver, *modules)
+        driver_manager = jpype.java.sql.DriverManager
+        driver_manager.registerDriver(jdbc_driver)
+
+        info = jpype.java.util.Properties()
+        for key, value in driver_args.items():
+            info.setProperty(key, value)
+
+        jdbc_connection = jdbc_driver.connect(dsn, info)
+        return jpype_dbapi2.Connection(
+            jdbc_connection,
             adapters=adapters,
             converters=converters,
+            getters=jpype_dbapi2.GETTERS_BY_TYPE,
+            setters=jpype_dbapi2.SETTERS_BY_TYPE,
         )
 
     @staticmethod
-    def load_class(name: str, *modules: str | PathLike[str]) -> Any:
-        return load_class(name, *modules)
+    def load_driver_instance(name: str, *modules: str | PathLike[str]) -> Any:
+        return load_driver_instance(name, *modules)
 
 
-def parse_url(path: str | PathLike[str]) -> Any:  # jpype.JClass(java.net.URL)
+def parse_url(path: str | PathLike[str]) -> Any:
     return jpype.java.nio.file.Paths.get(str(path)).toUri().toURL()
 
 
-def load_class(name: str, *modules: str | PathLike[str]) -> Any:  # jpype.JClass
+def load_driver_instance(name: str, *modules: str | PathLike[str]) -> Any:
     url_array = None
 
     if modules:
@@ -106,15 +117,14 @@ def load_class(name: str, *modules: str | PathLike[str]) -> Any:  # jpype.JClass
             url_array[index] = parse_url(module)
 
     if url_array is None:
-        return jpype.JClass(jpype.java.lang.Class.forName(name))
-
-    return jpype.JClass(
-        jpype.java.lang.Class.forName(
+        driver_class = jpype.java.lang.Class.forName(name)
+    else:
+        driver_class = jpype.java.lang.Class.forName(
             name,
             True,  # noqa: FBT003
             jpype.java.net.URLClassLoader(url_array),
         )
-    )
+    return driver_class.newInstance()
 
 
 def wrap_errors(func: _F) -> _F:

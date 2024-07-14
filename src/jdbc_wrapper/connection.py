@@ -107,11 +107,13 @@ def connect(
     Returns a Connection Object.
     It takes a number of parameters which are database dependent.
     """
+    modules = modules or []
     jvm = Java()
-    jvm.start(*(() if modules is None else modules))
+    jvm.start(*modules)
     jpype_connection = jvm.get_connection(
         dsn,
         driver,
+        *modules,
         driver_args=(driver_args or {}),
         adapters=adapters,
         converters=converters,
