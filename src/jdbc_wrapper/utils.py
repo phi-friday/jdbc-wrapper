@@ -24,25 +24,43 @@ _T = TypeVar("_T")
 class Java:
     def __init__(self, jvm_path: str | PathLike[str] | None = None) -> None:
         self._jvm_path = jvm_path
-        self._attatched = False
 
     def start(self, *modules: str | PathLike[str], **kwargs: Any) -> None:
         if self.is_started():
-            self.attach_thread()
+            self.attach()
             return
 
         self.add_modules(*modules)
         jpype.startJVM(jvmpath=self.jvm_path, **kwargs)
-        self._attatched = True
+        self.attach()
 
     def attach(self) -> None:
+        if not self.is_started():
+            self.start()
+
+        if self.attached:
+            return
+
         self.attach_thread()
-        self._attatched = True
 
     def add_modules(self, *modules: str | PathLike[str]) -> None:
         for module in modules:
             path = Path(module).resolve()
             jpype.addClassPath(path)
+
+    @property
+    def java(self) -> jpype.JPackage:
+        return jpype.java
+
+    @property
+    def javax(self) -> jpype.JPackage:
+        return jpype.javax
+
+    @property
+    def attached(self) -> bool:
+        if not self.is_started():
+            return False
+        return jpype.java.lang.Thread.isAttached()
 
     @property
     def modules(self) -> set[str]:
@@ -65,7 +83,9 @@ class Java:
 
     @classmethod
     def attach_thread(cls) -> None:
-        jpype.java.lang.Thread.attach()
+        thread = jpype.java.lang.Thread
+        if not thread.isAttached():
+            thread.attach()
 
     def get_connection(
         self,
