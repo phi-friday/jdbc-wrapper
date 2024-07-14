@@ -104,6 +104,7 @@ class Java:
         converters = LazyConvertor(converters)
 
         self.assert_started()
+        self.attach()
         driver_manager = jpype.java.sql.DriverManager
         jdbc_driver: Any = None
         if driver in _driver_registry:
