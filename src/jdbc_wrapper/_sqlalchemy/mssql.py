@@ -15,7 +15,9 @@ if TYPE_CHECKING:
 
 
 class MSJDBCDialect(JDBCDialectBase, MSDialect):
-    settings = DialectSettings(name="mssql", driver="jdbc_wrapper", inherit=MSDialect)
+    settings = DialectSettings(
+        name="mssql", driver="jdbc_wrapper", inherit=MSDialect, is_async=False
+    )
 
     @override
     def initialize(self, connection: Connection) -> None:
