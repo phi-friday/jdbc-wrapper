@@ -28,7 +28,7 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = ["ipykernel>=6.29.5", "ruff==0.5.1", "types-greenlet"]
+dev-dependencies = ["ipykernel>=6.29.5", "ruff==0.5.2", "types-greenlet"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
