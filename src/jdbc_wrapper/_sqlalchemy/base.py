@@ -21,6 +21,8 @@ from jdbc_wrapper.abc import (
     ConnectionABC,
     CursorABC,
 )
+from jdbc_wrapper.connection import connect as sync_connect
+from jdbc_wrapper.connection_async import connect as async_connect
 from jdbc_wrapper.exceptions import OperationalError
 from jdbc_wrapper.utils_async import await_, check_async_greenlet, check_in_sa_greenlet
 
@@ -991,7 +993,13 @@ class DbapiModule(ModuleType):
         return dir(self._module)
 
     def connect(self, *args: Any, **kwargs: Any) -> Any:
-        connection = self._module.connect(*args, **kwargs)
-        if kwargs["is_async"]:
+        is_async = kwargs.pop("is_async", False)
+        if is_async:
+            # TODO, FIXME:
+            # use `sqlalchemy.connectors.asyncio.AsyncAdapt_dbapi_connection`
+            # use `sqlalchemy.connectors.asyncio.AsyncAdaptFallback_dbapi_connection`
+            async_fallback = kwargs.pop("async_fallback", False)  # type: ignore # noqa: F841
+            creator_fn = kwargs.pop("async_creator_fn", async_connect)  # type: ignore # noqa: F841
+            connection = async_connect(*args, **kwargs)
             return AsyncConnection(connection)
-        return connection
+        return sync_connect(*args, **kwargs)
