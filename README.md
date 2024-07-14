@@ -102,6 +102,70 @@ if __name__ == "__main__":
 # [('2024-07-13 10:52:28',)]
 ```
 
+### `sqlalchemy_example.py`
+```python
+from __future__ import annotations
+
+from pprint import pprint
+
+import sqlalchemy as sa
+from sqlalchemy.orm import Session
+
+import jdbc_wrapper  # noqa: F401
+
+url = sa.make_url(
+    "sqlite+jdbc_wrapper:///database.db?"
+    "jdbc_driver=org.sqlite.JDBC&jdbc_modules=sqlite.jar&jdbc_modules=slf4j.jar"
+)
+engine = sa.create_engine(url)
+
+
+def main() -> None:
+    with Session(engine) as session:
+        session.execute(
+            sa.text("""
+            CREATE TABLE Students (
+                StudentID INTEGER PRIMARY KEY,
+                Name TEXT NOT NULL,
+                Major TEXT,
+                Year INTEGER,
+                GPA REAL
+            );
+        """)
+        )
+        session.execute(
+            sa.text("""
+            insert into Students (Name, Major, Year, GPA)
+            values ('Alice', 'CS', 3, 3.5)
+            """)
+        )
+
+        fetch = session.execute(sa.text("select * from Students"))
+        keys1 = fetch.keys()
+        rows1 = fetch.fetchall()
+
+        fetch = session.execute(sa.text("select datetime('now') as date;"))
+        keys2 = fetch.keys()
+        rows2 = fetch.fetchall()
+
+    pprint(keys1)
+    pprint(rows1)
+    pprint(keys2)
+    pprint(rows2)
+
+
+if __name__ == "__main__":
+    main()
+# output:
+# SLF4J(W): No SLF4J providers were found.
+# SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+# SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+# RMKeyView(['StudentID', 'Name', 'Major', 'Year', 'GPA'])
+# [(1, 'Alice', 'CS', 3, 3.5)]
+# RMKeyView(['date'])
+# [('2024-07-14 12:53:21',)]
+```
+
 ## License
 
 MIT, see [LICENSE](https://github.com/phi-friday/jdbc_wrapper/blob/main/LICENSE).
