@@ -123,7 +123,8 @@ class Java:
             info.setProperty(key, value)
 
         jdbc_connection = jdbc_driver.connect(dsn, info)
-        return jpype_dbapi2.Connection(
+        return catch_errors(
+            jpype_dbapi2.Connection,
             jdbc_connection,
             adapters=adapters,
             converters=converters,
