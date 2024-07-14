@@ -45,4 +45,11 @@ class MSJDBCDialect(JDBCDialectBase, MSDialect):
         return (), args
 
 
+class AsyncMSJDBCDialect(MSJDBCDialect):
+    settings = DialectSettings(
+        name="mssql", driver="jdbc_async_wrapper", inherit=MSJDBCDialect, is_async=True
+    )
+
+
 dialect = MSJDBCDialect
+dialect_async = AsyncMSJDBCDialect
