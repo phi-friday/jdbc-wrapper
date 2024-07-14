@@ -22,7 +22,7 @@ requires-python = ">= 3.9"
 
 [project.optional-dependencies]
 asyncio = ["greenlet"]
-sqlalchemy = ["sqlalchemy[asyncio]>=2", "greenlet"]
+sqlalchemy = ["sqlalchemy[asyncio]>=2", "jdbc-wrapper[asyncio]"]
 
 [build-system]
 requires = ["hatchling"]
