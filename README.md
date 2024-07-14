@@ -13,7 +13,7 @@ $ pip install "jdbc-wrapper @ git+https://github.com/phi-friday/jdbc-wrapper.git
 ## TODO
 * [ ] tests
 * [ ] sqlalchemy dialect
-* [ ] converter? adapter?
+* [ ] use `sqlalchemy.connectors.asyncio.AsyncAdapt_dbapi_connection`
 
 ## how to use
 ```bash
