@@ -1,24 +1,46 @@
 from __future__ import annotations
 
 import sys
+from contextlib import suppress
 from dataclasses import MISSING, asdict, dataclass, field, fields
-from typing import TYPE_CHECKING, Any
+from functools import wraps
+from types import ModuleType, TracebackType
+from typing import TYPE_CHECKING, Any, Literal
 
+from sqlalchemy import pool
 from sqlalchemy import util as sa_util
 from sqlalchemy.engine.default import DefaultDialect
-from sqlalchemy.engine.interfaces import BindTyping, Dialect
+from sqlalchemy.engine.interfaces import AdaptedConnection, BindTyping, Dialect
 from sqlalchemy.sql.compiler import InsertmanyvaluesSentinelOpts
-from typing_extensions import override
+from sqlalchemy.util import await_only
+from typing_extensions import ParamSpec, Self, TypeVar, override
 
+from jdbc_wrapper.abc import (
+    AsyncConnectionABC,
+    AsyncCursorABC,
+    ConnectionABC,
+    CursorABC,
+)
 from jdbc_wrapper.exceptions import OperationalError
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, MutableMapping
-    from types import ModuleType
+    from collections.abc import (
+        Awaitable,
+        Callable,
+        Coroutine,
+        Iterator,
+        Mapping,
+        MutableMapping,
+        Sequence,
+    )
 
+    from sqlalchemy.engine.url import URL
     from sqlalchemy.types import TypeEngine
 
-    from jdbc_wrapper.abc import ConnectionABC, CursorABC
+    from jdbc_wrapper.types import Description
+
+_T = TypeVar("_T")
+_P = ParamSpec("_P")
 
 _dataclass_options = {"frozen": True}
 if sys.version_info >= (3, 10):
@@ -381,7 +403,7 @@ class JDBCDialectBase(DefaultDialect, metaclass=JDBCDialectMeta):
     def import_dbapi(cls) -> ModuleType:
         import jdbc_wrapper
 
-        return jdbc_wrapper
+        return DbapiModule(jdbc_wrapper)
 
     @property
     def dbapi(self) -> ModuleType:
@@ -389,6 +411,13 @@ class JDBCDialectBase(DefaultDialect, metaclass=JDBCDialectMeta):
 
     @dbapi.setter
     def dbapi(self, value: Any) -> None: ...
+
+    @classmethod
+    @override
+    def get_pool_class(cls, url: URL) -> type[pool.Pool]:
+        if cls.is_async:
+            return getattr(cls, "poolclass", pool.AsyncAdaptedQueuePool)
+        return getattr(cls, "poolclass", pool.QueuePool)
 
     @override
     def is_disconnect(  # pyright: ignore[reportIncompatibleMethodOverride]
@@ -708,3 +737,248 @@ class JDBCDialectBase(DefaultDialect, metaclass=JDBCDialectMeta):
     """Whether or not this dialect has a separate "terminate" implementation
     that does not block or require awaiting."""
     ### settings:: end
+
+
+def wrap_async(
+    func: Callable[_P, Awaitable[_T]] | Callable[_P, Coroutine[Any, Any, _T]],
+) -> Callable[_P, _T]:
+    @wraps(func)
+    def inner(*args: _P.args, **kwargs: _P.kwargs) -> _T:
+        return await_only(func(*args, **kwargs))
+
+    return inner
+
+
+class AsyncConnection(AdaptedConnection, ConnectionABC[Any]):
+    __slots__ = ("_conection",)
+
+    def __init__(self, connection: AsyncConnectionABC[Any]) -> None:
+        self._conection = connection
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._conection, name)
+
+    @property
+    @override
+    def autocommit(self) -> bool:
+        return self._connection.autocommit
+
+    @autocommit.setter
+    @override
+    def autocommit(self, value: bool) -> None:
+        self._conection.autocommit = value
+
+    @property
+    @override
+    def is_closed(self) -> bool:
+        return self._conection.is_closed
+
+    @wrap_async
+    @override
+    async def close(self) -> None:
+        return await self._conection.close()
+
+    @wrap_async
+    @override
+    async def commit(self) -> None:
+        return await self._conection.commit()
+
+    @wrap_async
+    @override
+    async def rollback(self) -> None:
+        return await self._conection.rollback()
+
+    @wrap_async
+    @override
+    async def cursor(self) -> AsyncCursor:
+        cursor = await self._conection.cursor()
+        return AsyncCursor(self, cursor)
+
+    @override
+    def __enter__(self) -> Self:
+        return self
+
+    @override
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        self.close()
+
+    @override
+    def __del__(self) -> None:
+        with suppress(Exception):
+            self.close()
+
+
+class AsyncCursor(CursorABC[Any]):
+    __slots__ = ("_connection", "_cursor")
+
+    def __init__(
+        self, connection: AsyncConnection, cursor: AsyncCursorABC[Any]
+    ) -> None:
+        self._connection = connection
+        self._cursor = cursor
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._cursor, name)
+
+    @property
+    @override
+    def description(self) -> Sequence[Description] | None:
+        return self._cursor.description
+
+    @property
+    @override
+    def rowcount(self) -> int:
+        return self._cursor.rowcount
+
+    @wrap_async
+    @override
+    async def callproc(
+        self, procname: str, parameters: Sequence[Any] | Mapping[str, Any] | None = None
+    ) -> None:
+        return await self._cursor.callproc(procname, parameters)
+
+    @wrap_async
+    @override
+    async def close(self) -> None:
+        return await self._cursor.close()
+
+    @wrap_async
+    @override
+    async def _execute(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self,
+        operation: str,
+        parameters: Sequence[Any] | Mapping[str, Any] | None = None,
+    ) -> None:
+        await self._cursor.execute(operation, parameters)
+
+    @wrap_async
+    @override
+    async def _executemany(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self,
+        operation: str,
+        seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
+    ) -> None:
+        await self._cursor.executemany(operation, seq_of_parameters)
+
+    @wrap_async
+    @override
+    async def fetchone(self) -> Any | None:
+        return await self._cursor.fetchone()
+
+    @wrap_async
+    @override
+    async def fetchmany(self, size: int = -1) -> Sequence[Any]:
+        return await self._cursor.fetchmany()
+
+    @wrap_async
+    @override
+    async def fetchall(self) -> Sequence[Any]:
+        return await self._cursor.fetchall()
+
+    @wrap_async
+    @override
+    async def nextset(self) -> bool:
+        return await self._cursor.nextset()
+
+    @property
+    @override
+    def arraysize(self) -> int:
+        return self._cursor.arraysize
+
+    @arraysize.setter
+    @override
+    def arraysize(self, size: int) -> None:
+        self._cursor.arraysize = size
+
+    @wrap_async
+    @override
+    async def setinputsizes(self, sizes: Sequence[Any]) -> None:
+        return await self._cursor.setinputsizes(sizes)
+
+    @wrap_async
+    @override
+    async def setoutputsize(self, size: int, column: int = -1) -> None:
+        return await self._cursor.setoutputsize(size, column)
+
+    @property
+    @override
+    def rownumber(self) -> int:
+        return self._cursor.rownumber
+
+    @property
+    @override
+    def connection(self) -> ConnectionABC[Any]:
+        return self._connection
+
+    @wrap_async
+    @override
+    async def scroll(
+        self, value: int, mode: Literal["relative", "absolute"] = "relative"
+    ) -> None:
+        return await self._cursor.scroll(value, mode)
+
+    @wrap_async
+    @override
+    async def next(self) -> Any:
+        return await self._cursor.next()
+
+    @override
+    def __iter__(self) -> Iterator[Any]:
+        raise NotImplementedError
+
+    @property
+    @override
+    def lastrowid(self) -> Any:
+        return self._cursor.lastrowid
+
+    @property
+    @override
+    def is_closed(self) -> bool:
+        return self._cursor.is_closed
+
+    @property
+    @override
+    def thread_id(self) -> int:
+        return self._cursor.thread_id
+
+    @thread_id.setter
+    @override
+    def thread_id(self, value: int) -> None:
+        self._cursor.thread_id = value
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        with suppress(Exception):
+            self.close()
+
+
+class DbapiModule(ModuleType):
+    def __init__(self, jdbc_wrapper_module: ModuleType) -> None:
+        self._module = jdbc_wrapper_module
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._module, name)
+
+    def __dir__(self) -> list[str]:
+        return dir(self._module)
+
+    def connect(self, *args: Any, **kwargs: Any) -> Any:
+        connection = self._module.connect(*args, **kwargs)
+        if kwargs["is_async"]:
+            return AsyncConnection(connection)
+        return connection

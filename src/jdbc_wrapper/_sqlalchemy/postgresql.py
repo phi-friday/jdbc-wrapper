@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 class PGJDBCDialect(JDBCDialectBase, PGDialect):
     settings = DialectSettings(
-        name="postgresql", driver="jdbc_wrapper", inherit=PGDialect
+        name="postgresql", driver="jdbc_wrapper", inherit=PGDialect, is_async=False
     )
 
     @override
@@ -43,4 +43,14 @@ class PGJDBCDialect(JDBCDialectBase, PGDialect):
         return (), args
 
 
+class AsyncPGJDBCDialect(PGJDBCDialect):
+    settings = DialectSettings(
+        name="postgresql",
+        driver="jdbc_async_wrapper",
+        inherit=PGJDBCDialect,
+        is_async=True,
+    )
+
+
 dialect = PGJDBCDialect
+dialect_async = AsyncPGJDBCDialect

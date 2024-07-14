@@ -10,5 +10,10 @@ def register_in_sqlalchemy() -> None:
         "PGJDBCDialect",
     )
     registry.register(
+        "postgresql.jdbc_async_wrapper",
+        "jdbc_wrapper._sqlalchemy.postgresql",
+        "AsyncPGJDBCDialect",
+    )
+    registry.register(
         "mssql.jdbc_wrapper", "jdbc_wrapper._sqlalchemy.mssql", "MSJDBCDialect"
     )
