@@ -20,6 +20,8 @@ __all__ = []
 _F = TypeVar("_F", bound="Callable[..., Any]")
 _T = TypeVar("_T")
 
+_driver_registry: dict[str, Any] = {}
+
 
 class Java:
     def __init__(self, jvm_path: str | PathLike[str] | None = None) -> None:
@@ -102,8 +104,19 @@ class Java:
         converters = LazyConvertor(converters)
 
         self.assert_started()
-        jdbc_driver = self.load_driver_instance(driver, *modules)
-        jpype.java.sql.DriverManager.registerDriver(jdbc_driver)
+        driver_manager = jpype.java.sql.DriverManager
+        jdbc_driver: Any = None
+        if driver in _driver_registry:
+            jdbc_driver = _driver_registry[driver]
+        else:
+            for driver_instance in driver_manager.getDrivers():
+                if type(driver_instance).__name__ == driver:
+                    jdbc_driver = driver_instance
+                    break
+            else:
+                jdbc_driver = self.load_driver_instance(driver, *modules)
+                driver_manager.registerDriver(jdbc_driver)
+            _driver_registry.setdefault(driver, jdbc_driver)
 
         info = jpype.java.util.Properties()
         for key, value in driver_args.items():
