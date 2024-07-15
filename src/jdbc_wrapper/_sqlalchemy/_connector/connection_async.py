@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy.connectors.asyncio import AsyncAdapt_dbapi_connection
 from typing_extensions import Self, override
 
-from jdbc_wrapper._sqlalchemy._connector.utils_async import await_only
+from jdbc_wrapper._sqlalchemy._connector.utils_async import await_fallback, await_only
 from jdbc_wrapper.abc import AsyncConnectionABC, ConnectionABC
 
 if TYPE_CHECKING:
@@ -124,3 +124,7 @@ class AsyncConnection(AsyncAdapt_dbapi_connection, ConnectionABC[Any]):
     def __del__(self) -> None:
         with suppress(Exception):
             self.close()
+
+
+class AsyncConnectionFallback(AsyncConnection):
+    await_ = staticmethod(await_fallback)
