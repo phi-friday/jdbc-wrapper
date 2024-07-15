@@ -16,7 +16,6 @@ see [examples](https://github.com/phi-friday/jdbc-wrapper/tree/main/examples)
 ## TODO
 * [ ] tests
 * [ ] sqlalchemy dialect
-* [ ] use `sqlalchemy.connectors.asyncio.AsyncAdapt_dbapi_connection`
 
 ## License
 
