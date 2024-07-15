@@ -56,13 +56,12 @@ def await_fallback(awaitable: Awaitable[_T_co] | Coroutine[Any, Any, _T_co]) -> 
         if check_in_sa_greenlet(current):
             return sa_await_fallback(awaitable)
 
-        with ThreadPoolExecutor(1) as pool:
-            coro = _awaitable_to_coro(awaitable)
-            future = pool.submit(asyncio.run, coro)
-            wait([future], return_when="ALL_COMPLETED")
-            return future.result()
-
-        raise exceptions.OperationalError("greenlet_spawn has not been called")
+        try:
+            return _await_in_thread(awaitable)
+        except Exception as exc:
+            raise exceptions.OperationalError(
+                "greenlet_spawn has not been called"
+            ) from exc
     return current.parent.switch(awaitable)
 
 
@@ -72,13 +71,12 @@ def await_only(awaitable: Awaitable[_T_co] | Coroutine[Any, Any, _T_co]) -> _T_c
         if check_in_sa_greenlet(current):
             return sa_await_only(awaitable)
 
-        with ThreadPoolExecutor(1) as pool:
-            coro = _awaitable_to_coro(awaitable)
-            future = pool.submit(asyncio.run, coro)
-            wait([future], return_when="ALL_COMPLETED")
-            return future.result()
-
-        raise exceptions.OperationalError("greenlet_spawn has not been called")
+        try:
+            return _await_in_thread(awaitable)
+        except Exception as exc:
+            raise exceptions.OperationalError(
+                "greenlet_spawn has not been called"
+            ) from exc
     return current.parent.switch(awaitable)
 
 
@@ -105,3 +103,11 @@ def _awaitable_to_coro(
         return await awaitable
 
     return coro()
+
+
+def _await_in_thread(awaitable: Awaitable[_T_co] | Coroutine[Any, Any, _T_co]) -> _T_co:
+    with ThreadPoolExecutor(1) as pool:
+        coro = _awaitable_to_coro(awaitable)
+        future = pool.submit(asyncio.run, coro)
+        wait([future], return_when="ALL_COMPLETED")
+        return future.result()
