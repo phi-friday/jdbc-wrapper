@@ -68,6 +68,8 @@ async def main(sqlite_jar_url: str, slf4j_jar_url: str) -> None:
     pprint(keys2)
     pprint(rows2)
 
+    await engine.dispose()
+
 
 if __name__ == "__main__":
     asyncio.run(main(*sys.argv[1:]))
