@@ -14,9 +14,7 @@ import jdbc_wrapper  # noqa: F401 # pyright: ignore[reportUnusedImport]
 
 
 def create_url(jdbc_connection_string: str, *modules: Path) -> sa.engine.url.URL:
-    url = sa.make_url(
-        "postgresql+jdbc_async_wrapper:///?jdbc_driver=org.postgresql.Driver"
-    )
+    url = sa.make_url("postgresql+jdbc_wrapper:///?jdbc_driver=org.postgresql.Driver")
     query = dict(url.query)
     query["jdbc_dsn"] = jdbc_connection_string
     query["jdbc_modules"] = tuple(str(module) for module in modules)

@@ -15,7 +15,7 @@ import jdbc_wrapper  # noqa: F401 # pyright: ignore[reportUnusedImport]
 
 
 def create_url(*modules: Path) -> sa.engine.url.URL:
-    url = sa.make_url("sqlite+jdbc_async_wrapper:///?jdbc_driver=org.sqlite.JDBC")
+    url = sa.make_url("sqlite+jdbc_wrapper:///?jdbc_driver=org.sqlite.JDBC")
     query = dict(url.query)
     query["jdbc_modules"] = tuple(str(module) for module in modules)
     return url.set(query=query)
