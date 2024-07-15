@@ -51,6 +51,11 @@ class MSJDBCDialect(JDBCConnector, MSDialect):
         args = self._create_connect_args(dsn=dsn, query=query)
         return (), args
 
+    @classmethod
+    @override
+    def get_async_dialect_cls(cls, url: URL) -> type[AsyncMSJDBCDialect]:
+        return AsyncMSJDBCDialect
+
 
 class AsyncMSJDBCDialect(MSJDBCDialect):
     settings = ConnectorSettings(

@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 import greenlet
 from greenlet import getcurrent
-from sqlalchemy.util import await_fallback as sa_await_fallback
 from sqlalchemy.util import await_only as sa_await_only
 from typing_extensions import ParamSpec, TypeVar
 
@@ -48,21 +47,6 @@ def wrap_async(
         return jdbc_await(coro)
 
     return inner
-
-
-def await_fallback(awaitable: Awaitable[_T_co] | Coroutine[Any, Any, _T_co]) -> _T_co:
-    current = getcurrent()
-    if not check_async_greenlet(current):
-        if check_in_sa_greenlet(current):
-            return sa_await_fallback(awaitable)
-
-        try:
-            return _await_in_thread(awaitable)
-        except Exception as exc:
-            raise exceptions.OperationalError(
-                "greenlet_spawn has not been called"
-            ) from exc
-    return current.parent.switch(awaitable)
 
 
 def await_only(awaitable: Awaitable[_T_co] | Coroutine[Any, Any, _T_co]) -> _T_co:

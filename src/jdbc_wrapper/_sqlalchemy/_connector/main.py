@@ -14,11 +14,7 @@ from jdbc_wrapper._sqlalchemy._connector.config import (
     ConnectorSettings,
     JDBCConnectorMeta,
 )
-from jdbc_wrapper._sqlalchemy._connector.connection_async import (
-    AsyncConnection,
-    AsyncConnectionFallback,
-)
-from jdbc_wrapper._sqlalchemy._connector.utils_async import await_fallback
+from jdbc_wrapper._sqlalchemy._connector.connection_async import AsyncConnection
 from jdbc_wrapper.abc import ConnectionABC
 from jdbc_wrapper.connection import connect as sync_connect
 from jdbc_wrapper.connection_async import connect as async_connect
@@ -48,22 +44,16 @@ class DbapiModule(ModuleType):
 
     def connect(self, *args: Any, **kwargs: Any) -> Any:
         is_async = kwargs.pop("is_async", False)
+        kwargs.pop("async_fallback", None)
         if is_async:
-            async_fallback = kwargs.pop("async_fallback", False)
             creator_fn = kwargs.pop("async_creator_fn", None)
 
-            async_fallback = sa_util.asbool(async_fallback)
             if creator_fn is None:
                 connection = async_connect(*args, **kwargs)
             else:
                 connection = creator_fn(*args, **kwargs)
-                if async_fallback:
-                    connection = await_fallback(connection)
-                else:
-                    connection = jdbc_await(connection)
+                connection = jdbc_await(connection)
 
-            if async_fallback:
-                return AsyncConnectionFallback(self, connection)
             return AsyncConnection(self, connection)
         return sync_connect(*args, **kwargs)
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy.dialects.postgresql.base import PGDialect
+from sqlalchemy.engine.url import URL
 from typing_extensions import override
 
 from jdbc_wrapper._sqlalchemy.connector import ConnectorSettings, JDBCConnector
@@ -47,6 +48,11 @@ class PGJDBCDialect(JDBCConnector, PGDialect):
 
         args = self._create_connect_args(dsn=dsn, query=query)
         return (), args
+
+    @classmethod
+    @override
+    def get_async_dialect_cls(cls, url: URL) -> type[AsyncPGJDBCDialect]:
+        return AsyncPGJDBCDialect
 
 
 class AsyncPGJDBCDialect(PGJDBCDialect):
