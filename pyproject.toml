@@ -22,7 +22,12 @@ requires-python = ">= 3.9"
 asyncio = ["greenlet"]
 sqlalchemy = ["sqlalchemy[asyncio]>=2", "jdbc-wrapper[asyncio]"]
 typing = ["types-greenlet"]
-test = ["pytest>=8.2.2"]
+test = [
+    "pytest>=8.2.2",
+    "filelock>=3.15.4",
+    "pytest-xdist[psutil]>=3.6.1",
+    "anyio>=4.4.0",
+]
 
 [build-system]
 requires = ["hatchling"]
