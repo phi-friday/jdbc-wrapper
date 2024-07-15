@@ -15,5 +15,9 @@
     "reportUnnecessaryIsInstance": false,
     "reportUnnecessaryComparison": false,
     "reportDeprecated": false,
-    "reportPrivateUsage": false
+    "reportPrivateUsage": false,
+    "reportUnnecessaryTypeIgnoreComment": true,
+    "reportImplicitOverride": true,
+    "venv": ".venv",
+    "venvPath": "."
 }
