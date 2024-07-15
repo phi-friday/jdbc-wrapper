@@ -91,19 +91,19 @@ class AsyncCursor(AsyncAdapt_dbapi_cursor, CursorABC[Any]):
 
     @override
     def fetchone(self) -> Any | None:
-        return AsyncAdapt_dbapi_cursor.fetchone(self)
+        return super().fetchone()
 
     @override
     def fetchmany(self, size: int | None = None) -> Sequence[Any]:  # pyright: ignore[reportIncompatibleMethodOverride]
-        return AsyncAdapt_dbapi_cursor.fetchmany(self, size)
+        return super().fetchmany(size)
 
     @override
     def fetchall(self) -> Sequence[Any]:  # pyright: ignore[reportIncompatibleMethodOverride]
-        return AsyncAdapt_dbapi_cursor.fetchall(self)
+        return super().fetchall()
 
     @override
     def nextset(self) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
-        AsyncAdapt_dbapi_cursor.nextset(self)
+        return super().nextset()
 
     @property
     @override
@@ -149,7 +149,7 @@ class AsyncCursor(AsyncAdapt_dbapi_cursor, CursorABC[Any]):
 
     @override
     def __iter__(self) -> Generator[Any, None, None]:  # noqa: PYI058
-        yield from AsyncAdapt_dbapi_cursor.__iter__(self)
+        yield from super().__iter__()
 
     @property
     @override
@@ -199,16 +199,16 @@ class AsyncCursorServerSide(AsyncAdapt_dbapi_ss_cursor, AsyncCursor):
 
     @override
     def close(self) -> None:
-        AsyncAdapt_dbapi_ss_cursor.close(self)
+        return super().close()
 
     @override
     def fetchone(self) -> Any | None:
-        return AsyncAdapt_dbapi_ss_cursor.fetchone(self)
+        return super().fetchone()
 
     @override
     def fetchmany(self, size: int | None = None) -> Sequence[Any]:
-        return AsyncAdapt_dbapi_ss_cursor.fetchmany(self, size)
+        return super().fetchmany(size)
 
     @override
     def fetchall(self) -> Sequence[Any]:
-        return AsyncAdapt_dbapi_ss_cursor.fetchall(self)
+        return super().fetchall()

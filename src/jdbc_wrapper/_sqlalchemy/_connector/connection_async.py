@@ -79,18 +79,24 @@ class AsyncConnection(AsyncAdapt_dbapi_connection, ConnectionABC[Any]):
 
     @override
     def close(self) -> None:
-        if not self.is_closed:
-            AsyncAdapt_dbapi_connection.close(self)
+        if self.is_closed:
+            return None
+
+        return super().close()
 
     @override
     def commit(self) -> None:
-        if not self.is_closed:
-            AsyncAdapt_dbapi_connection.commit(self)
+        if self.is_closed:
+            return None
+
+        return super().commit()
 
     @override
     def rollback(self) -> None:
-        if not self.is_closed:
-            AsyncAdapt_dbapi_connection.rollback(self)
+        if self.is_closed:
+            return None
+
+        return super().rollback()
 
     @override
     def cursor(self, server_side: bool = False) -> AsyncCursor:
