@@ -31,6 +31,11 @@ def _create_temp_dir() -> Path:
 
 
 @pytest.fixture(scope="session", autouse=True)
+def anyio_backend() -> str:
+    return "asyncio"
+
+
+@pytest.fixture(scope="session", autouse=True)
 def create_temp_dir(worker_id: str) -> Generator[Path, None, None]:
     if worker_id == "master":
         # only run once
