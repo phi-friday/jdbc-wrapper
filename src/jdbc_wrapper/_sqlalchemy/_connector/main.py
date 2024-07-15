@@ -3,7 +3,7 @@ from __future__ import annotations
 from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import pool
+from sqlalchemy import make_url, pool
 from sqlalchemy import util as sa_util
 from sqlalchemy.connectors import Connector
 from sqlalchemy.engine.default import DefaultDialect
@@ -75,6 +75,7 @@ class DefaultConnector(DefaultDialect, Connector):  # pyright: ignore[reportInco
 class JDBCConnector(DefaultConnector, metaclass=JDBCConnectorMeta):
     _jdbc_wrapper_dialect_settings: ConnectorSettings
     settings = ConnectorSettings(
+        jdbc_dsn_prefix="jdbc://",
         name="jdbc_wrapper_base_connector",
         driver="jdbc_wrapper_base_driver",
         inherit=DefaultConnector,
@@ -83,7 +84,7 @@ class JDBCConnector(DefaultConnector, metaclass=JDBCConnectorMeta):
         supports_native_decimal=True,
         bind_typing=BindTyping.NONE,
     )
-
+    jdbc_dsn_prefix: str
     default_paramstyle = PARAM_STYLE
 
     @classmethod
@@ -139,6 +140,17 @@ class JDBCConnector(DefaultConnector, metaclass=JDBCConnectorMeta):
         self, dsn: str, query: Mapping[str, Any]
     ) -> dict[str, Any]:
         driver_args = dict(query)
+        if "jdbc_dsn" in driver_args:
+            dsn = driver_args.pop("jdbc_dsn")
+            dsn = (
+                self.dialect_description
+                + "://"
+                + dsn.removeprefix(self.jdbc_dsn_prefix).removeprefix("://")
+            )
+            url = make_url(dsn)
+            url = url.set(query=driver_args | dict(url.query))
+            return self.create_connect_args(url)[1]
+
         try:
             driver: str = driver_args.pop("jdbc_driver")
         except KeyError as exc:

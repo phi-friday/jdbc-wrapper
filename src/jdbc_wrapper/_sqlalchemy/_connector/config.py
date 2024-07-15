@@ -29,6 +29,8 @@ class ConnectorSettings:
         `:ref:sqlalchemy.engine.default.DefaultDialect`
     """
 
+    jdbc_dsn_prefix: str
+
     name: str
     """identifying name for the dialect from a DBAPI-neutral point of view
     (i.e. 'sqlite')

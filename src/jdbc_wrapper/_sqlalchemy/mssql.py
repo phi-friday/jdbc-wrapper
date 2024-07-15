@@ -16,7 +16,11 @@ if TYPE_CHECKING:
 
 class MSJDBCDialect(JDBCConnector, MSDialect):
     settings = ConnectorSettings(
-        name="mssql", driver="jdbc_wrapper", inherit=MSDialect, is_async=False
+        jdbc_dsn_prefix="jdbc:sqlserver://",
+        name="mssql",
+        driver="jdbc_wrapper",
+        inherit=MSDialect,
+        is_async=False,
     )
 
     @override
@@ -25,7 +29,7 @@ class MSJDBCDialect(JDBCConnector, MSDialect):
 
     @override
     def create_connect_args(self, url: URL) -> ConnectArgsType:
-        dsn = "jdbc:sqlserver://"
+        dsn = self.jdbc_dsn_prefix
         if url.host:
             dsn += url.host
         if url.port:
@@ -50,7 +54,11 @@ class MSJDBCDialect(JDBCConnector, MSDialect):
 
 class AsyncMSJDBCDialect(MSJDBCDialect):
     settings = ConnectorSettings(
-        name="mssql", driver="jdbc_async_wrapper", inherit=MSJDBCDialect, is_async=True
+        jdbc_dsn_prefix="jdbc:sqlserver://",
+        name="mssql",
+        driver="jdbc_async_wrapper",
+        inherit=MSJDBCDialect,
+        is_async=True,
     )
 
 

@@ -16,7 +16,11 @@ if TYPE_CHECKING:
 
 class PGJDBCDialect(JDBCConnector, PGDialect):
     settings = ConnectorSettings(
-        name="postgresql", driver="jdbc_wrapper", inherit=PGDialect, is_async=False
+        jdbc_dsn_prefix="jdbc:postgresql://",
+        name="postgresql",
+        driver="jdbc_wrapper",
+        inherit=PGDialect,
+        is_async=False,
     )
 
     @override
@@ -25,7 +29,7 @@ class PGJDBCDialect(JDBCConnector, PGDialect):
 
     @override
     def create_connect_args(self, url: URL) -> ConnectArgsType:
-        dsn = "jdbc:postgresql://"
+        dsn = self.jdbc_dsn_prefix
         if url.host:
             dsn += url.host
         if url.port:
@@ -47,6 +51,7 @@ class PGJDBCDialect(JDBCConnector, PGDialect):
 
 class AsyncPGJDBCDialect(PGJDBCDialect):
     settings = ConnectorSettings(
+        jdbc_dsn_prefix="jdbc:postgresql://",
         name="postgresql",
         driver="jdbc_async_wrapper",
         inherit=PGJDBCDialect,

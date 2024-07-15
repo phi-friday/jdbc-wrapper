@@ -24,7 +24,11 @@ if TYPE_CHECKING:
 
 class SQJDBCDialect(JDBCConnector, SQLiteDialect):
     settings = ConnectorSettings(
-        name="sqlite", driver="jdbc_wrapper", inherit=SQLiteDialect, is_async=False
+        jdbc_dsn_prefix="jdbc:sqlite:",
+        name="sqlite",
+        driver="jdbc_wrapper",
+        inherit=SQLiteDialect,
+        is_async=False,
     )
 
     @property
@@ -46,7 +50,7 @@ class SQJDBCDialect(JDBCConnector, SQLiteDialect):
 
     @override
     def create_connect_args(self, url: URL) -> ConnectArgsType:
-        dsn = "jdbc:sqlite:"
+        dsn = self.jdbc_dsn_prefix
         if url.database:
             database = Path(url.database).resolve()
             dsn += str(database)
@@ -59,7 +63,11 @@ class SQJDBCDialect(JDBCConnector, SQLiteDialect):
 
 class AsyncSQJDBCDialect(SQJDBCDialect):
     settings = ConnectorSettings(
-        name="sqlite", driver="jdbc_async_wrapper", inherit=SQJDBCDialect, is_async=True
+        jdbc_dsn_prefix="jdbc:sqlite:",
+        name="sqlite",
+        driver="jdbc_async_wrapper",
+        inherit=SQJDBCDialect,
+        is_async=True,
     )
 
 
