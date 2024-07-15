@@ -23,6 +23,7 @@ asyncio = ["greenlet"]
 sqlalchemy = ["sqlalchemy[asyncio]>=2", "jdbc-wrapper[asyncio]"]
 typing = ["types-greenlet"]
 test = [
+    "jdbc-wrapper[asyncio,sqlalchemy]",
     "pytest>=8.2.2",
     "filelock>=3.15.4",
     "pytest-xdist[psutil]>=3.6.1",
