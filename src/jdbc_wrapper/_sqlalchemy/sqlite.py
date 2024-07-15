@@ -2,7 +2,6 @@
 # pyright: reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
-from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -10,7 +9,11 @@ from sqlalchemy.dialects.sqlite.base import SQLiteDialect
 from sqlalchemy.util import memoized_property
 from typing_extensions import override
 
-from jdbc_wrapper._sqlalchemy.base import DbapiModule, DialectSettings, JDBCDialectBase
+from jdbc_wrapper._sqlalchemy.connector import (
+    ConnectorSettings,
+    DbapiModule,
+    JDBCConnector,
+)
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -19,8 +22,8 @@ if TYPE_CHECKING:
     from sqlalchemy.engine.url import URL
 
 
-class SQJDBCDialect(JDBCDialectBase, SQLiteDialect):
-    settings = DialectSettings(
+class SQJDBCDialect(JDBCConnector, SQLiteDialect):
+    settings = ConnectorSettings(
         name="sqlite", driver="jdbc_wrapper", inherit=SQLiteDialect, is_async=False
     )
 
@@ -55,7 +58,7 @@ class SQJDBCDialect(JDBCDialectBase, SQLiteDialect):
 
 
 class AsyncSQJDBCDialect(SQJDBCDialect):
-    settings = DialectSettings(
+    settings = ConnectorSettings(
         name="sqlite", driver="jdbc_async_wrapper", inherit=SQJDBCDialect, is_async=True
     )
 
@@ -71,10 +74,6 @@ class SQDbapiModule(DbapiModule):
     @override
     def __dir__(self) -> list[str]:
         return dir(self._module)
-
-    @cached_property
-    def sqlite_version_info(self) -> tuple[int, int, int]:
-        return (3, 36, 0)
 
 
 dialect = SQJDBCDialect

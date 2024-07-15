@@ -7,15 +7,15 @@ from typing import TYPE_CHECKING
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from typing_extensions import override
 
-from jdbc_wrapper._sqlalchemy.base import DialectSettings, JDBCDialectBase
+from jdbc_wrapper._sqlalchemy.connector import ConnectorSettings, JDBCConnector
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import ConnectArgsType, Connection
     from sqlalchemy.engine.url import URL
 
 
-class PGJDBCDialect(JDBCDialectBase, PGDialect):
-    settings = DialectSettings(
+class PGJDBCDialect(JDBCConnector, PGDialect):
+    settings = ConnectorSettings(
         name="postgresql", driver="jdbc_wrapper", inherit=PGDialect, is_async=False
     )
 
@@ -46,7 +46,7 @@ class PGJDBCDialect(JDBCDialectBase, PGDialect):
 
 
 class AsyncPGJDBCDialect(PGJDBCDialect):
-    settings = DialectSettings(
+    settings = ConnectorSettings(
         name="postgresql",
         driver="jdbc_async_wrapper",
         inherit=PGJDBCDialect,

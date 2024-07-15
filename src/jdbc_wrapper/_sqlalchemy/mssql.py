@@ -7,15 +7,15 @@ from typing import TYPE_CHECKING
 from sqlalchemy.dialects.mssql.base import MSDialect
 from typing_extensions import override
 
-from jdbc_wrapper._sqlalchemy.base import DialectSettings, JDBCDialectBase
+from jdbc_wrapper._sqlalchemy.connector import ConnectorSettings, JDBCConnector
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import ConnectArgsType, Connection
     from sqlalchemy.engine.url import URL
 
 
-class MSJDBCDialect(JDBCDialectBase, MSDialect):
-    settings = DialectSettings(
+class MSJDBCDialect(JDBCConnector, MSDialect):
+    settings = ConnectorSettings(
         name="mssql", driver="jdbc_wrapper", inherit=MSDialect, is_async=False
     )
 
@@ -49,7 +49,7 @@ class MSJDBCDialect(JDBCDialectBase, MSDialect):
 
 
 class AsyncMSJDBCDialect(MSJDBCDialect):
-    settings = DialectSettings(
+    settings = ConnectorSettings(
         name="mssql", driver="jdbc_async_wrapper", inherit=MSJDBCDialect, is_async=True
     )
 
