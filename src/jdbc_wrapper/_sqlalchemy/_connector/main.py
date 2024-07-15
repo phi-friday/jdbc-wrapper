@@ -22,7 +22,12 @@ from jdbc_wrapper._sqlalchemy._connector.utils_async import await_fallback
 from jdbc_wrapper.abc import ConnectionABC
 from jdbc_wrapper.connection import connect as sync_connect
 from jdbc_wrapper.connection_async import connect as async_connect
-from jdbc_wrapper.const import PARAM_STYLE
+from jdbc_wrapper.const import (
+    JDBC_QUERY_DRIVER,
+    JDBC_QUERY_DSN,
+    JDBC_QUERY_MODULES,
+    PARAM_STYLE,
+)
 from jdbc_wrapper.exceptions import OperationalError
 from jdbc_wrapper.utils_async import await_ as jdbc_await
 
@@ -140,8 +145,8 @@ class JDBCConnector(DefaultConnector, metaclass=JDBCConnectorMeta):
         self, dsn: str, query: Mapping[str, Any]
     ) -> dict[str, Any]:
         driver_args = dict(query)
-        if "jdbc_dsn" in driver_args:
-            dsn = driver_args.pop("jdbc_dsn")
+        if JDBC_QUERY_DSN in driver_args:
+            dsn = driver_args.pop(JDBC_QUERY_DSN)
             dsn = (
                 self.dialect_description
                 + "://"
@@ -152,11 +157,12 @@ class JDBCConnector(DefaultConnector, metaclass=JDBCConnectorMeta):
             return self.create_connect_args(url)[1]
 
         try:
-            driver: str = driver_args.pop("jdbc_driver")
+            driver: str = driver_args.pop(JDBC_QUERY_DRIVER)
         except KeyError as exc:
-            raise OperationalError(
-                "The `jdbc_driver` key is required in the query string"
-            ) from exc
+            error_msg = (
+                f"The `{JDBC_QUERY_DRIVER!s}` key is required in the query string"
+            )
+            raise OperationalError(error_msg) from exc
 
         result: dict[str, Any] = {
             "dsn": dsn,
@@ -164,7 +170,7 @@ class JDBCConnector(DefaultConnector, metaclass=JDBCConnectorMeta):
             "is_async": self.is_async,
         }
 
-        modules = driver_args.pop("jdbc_modules", None)
+        modules = driver_args.pop(JDBC_QUERY_MODULES, None)
         result["driver_args"] = driver_args
         if modules:
             if isinstance(modules, str):
