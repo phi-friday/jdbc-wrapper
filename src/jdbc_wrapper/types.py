@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Generic, cast
 
 from jpype import dbapi2 as jpype_dbapi2
 from jpype.dbapi2 import JDBCType
-from typing_extensions import TypeAlias, TypeVar
+from typing_extensions import TypeAlias, TypeVar, override
 
 from jdbc_wrapper.utils import wrap_errors
 
@@ -146,9 +146,11 @@ class WrappedJDBCType(Generic[_J, _T]):
     def set_value(self, statement: _JDBCStmt, index: int, value: _T) -> Any:
         return self._jdbc_type.set(statement, index, value)
 
+    @override
     def __repr__(self) -> str:
         return repr(self._jdbc_type)
 
+    @override
     def __eq__(self, value: object) -> bool:
         return (
             value == self._jdbc_type
@@ -156,6 +158,7 @@ class WrappedJDBCType(Generic[_J, _T]):
             else self._jdbc_type == value
         )
 
+    @override
     def __hash__(self) -> int:
         return hash(self._jdbc_type)
 

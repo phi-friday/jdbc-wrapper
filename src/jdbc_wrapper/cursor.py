@@ -173,6 +173,7 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
 
     @property
     @wrap_errors
+    @override
     def lastrowid(self) -> Any:
         return self._jpype_cursor.lastrowid
 

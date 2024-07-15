@@ -28,12 +28,14 @@ class LazyMapping(Mapping[Any, Callable[[Any], Any]]):
     def __init__(self, other: Mapping[Any, Callable[[Any], Any]] | None) -> None:
         self._other = other or {}
 
+    @override
     def __getitem__(self, key: Any) -> Callable[[Any], Any]:
         maybe = self._other.get(key)
         if maybe is not None:
             return maybe
         return getattr(get_type_pipeline(key), self._func_name)
 
+    @override
     def __iter__(self) -> Iterator[Any]:
         registry = set()
         for key in chain(self._other, _registry):
@@ -42,6 +44,7 @@ class LazyMapping(Mapping[Any, Callable[[Any], Any]]):
             registry.add(key)
             yield key
 
+    @override
     def __len__(self) -> int:
         return len(set(chain(self._other, _registry)))
 

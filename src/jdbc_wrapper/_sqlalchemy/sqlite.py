@@ -25,10 +25,12 @@ class SQJDBCDialect(JDBCDialectBase, SQLiteDialect):
     )
 
     @property
+    @override
     def dbapi(self) -> ModuleType | None:
         return None
 
     @dbapi.setter
+    @override
     def dbapi(self, value: Any) -> None: ...
 
     @memoized_property
@@ -62,9 +64,11 @@ class SQDbapiModule(DbapiModule):
     def __init__(self, module: DbapiModule) -> None:
         self._module = module
 
+    @override
     def __getattr__(self, name: str) -> Any:
         return getattr(self._module, name)
 
+    @override
     def __dir__(self) -> list[str]:
         return dir(self._module)
 

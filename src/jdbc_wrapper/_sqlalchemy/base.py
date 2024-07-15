@@ -397,10 +397,12 @@ class JDBCDialectBase(DefaultDialect, metaclass=JDBCDialectMeta):
         return DbapiModule(jdbc_wrapper)
 
     @property
+    @override
     def dbapi(self) -> ModuleType:
         return self.import_dbapi()
 
     @dbapi.setter
+    @override
     def dbapi(self, value: Any) -> None: ...
 
     @classmethod
@@ -966,9 +968,11 @@ class AsyncCursor(CursorABC[Any]):
     def thread_id(self, value: int) -> None:
         self._cursor.thread_id = value
 
+    @override
     def __enter__(self) -> Self:
         return self
 
+    @override
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
@@ -977,6 +981,7 @@ class AsyncCursor(CursorABC[Any]):
     ) -> None:
         self.close()
 
+    @override
     def __del__(self) -> None:
         with suppress(Exception):
             self._cursor._sync_cursor.close()  # type: ignore # noqa: SLF001
@@ -986,9 +991,11 @@ class DbapiModule(ModuleType):
     def __init__(self, jdbc_wrapper_module: ModuleType) -> None:
         self._module = jdbc_wrapper_module
 
+    @override
     def __getattr__(self, name: str) -> Any:
         return getattr(self._module, name)
 
+    @override
     def __dir__(self) -> list[str]:
         return dir(self._module)
 
