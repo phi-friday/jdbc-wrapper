@@ -3,22 +3,21 @@ from __future__ import annotations
 import asyncio
 import sys
 import tempfile
-from pathlib import Path
 from pprint import pprint
-from urllib.request import urlretrieve
 
 from jdbc_wrapper import connect
+from jdbc_wrapper._loader import PostgresqlLoader
 
 
-async def main(jdbc_connection_string: str, postgresql_jar_url: str) -> None:
+async def main(jdbc_connection_string: str) -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
-        postgresql_jar = Path(temp_dir) / "postgresql.jar"
-        urlretrieve(postgresql_jar_url, postgresql_jar)
+        loader = PostgresqlLoader(base_dir=temp_dir)
+        modules = loader.load_latest()
 
         async with connect(
             jdbc_connection_string,
-            driver="org.postgresql.Driver",
-            modules=[postgresql_jar],
+            driver=loader.default_driver,
+            modules=modules,
             is_async=True,
         ) as conn:
             async with conn.cursor() as cursor:

@@ -2,28 +2,19 @@ from __future__ import annotations
 
 import sys
 import tempfile
-from concurrent.futures import ThreadPoolExecutor, wait
-from pathlib import Path
 from pprint import pprint
-from urllib.request import urlretrieve
 
 from jdbc_wrapper import connect
+from jdbc_wrapper._loader import SQliteLoader
 
 
-def main(sqlite_jar_url: str, slf4j_jar_url: str) -> None:
+def main() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
-        sqlite_jar = Path(temp_dir) / "sqlite.jar"
-        slf4j_jar = sqlite_jar.with_name("slf4j.jar")
-
-        with ThreadPoolExecutor(2) as pool:
-            future0 = pool.submit(urlretrieve, sqlite_jar_url, sqlite_jar)
-            future1 = pool.submit(urlretrieve, slf4j_jar_url, slf4j_jar)
-            wait([future0, future1], return_when="ALL_COMPLETED")
+        loader = SQliteLoader(base_dir=temp_dir)
+        modules = loader.load_latest()
 
         with connect(
-            "jdbc:sqlite::memory:",
-            driver="org.sqlite.JDBC",
-            modules=[sqlite_jar, slf4j_jar],
+            "jdbc:sqlite::memory:", driver=loader.default_driver, modules=modules
         ) as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""

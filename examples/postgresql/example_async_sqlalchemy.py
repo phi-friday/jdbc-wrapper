@@ -5,28 +5,31 @@ import sys
 import tempfile
 from pathlib import Path
 from pprint import pprint
-from urllib.request import urlretrieve
 
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_asyncio
 
-import jdbc_wrapper  # noqa: F401 # pyright: ignore[reportUnusedImport]
+from jdbc_wrapper._loader import PostgresqlLoader
 
 
-def create_url(jdbc_connection_string: str, *modules: Path) -> sa.engine.url.URL:
-    url = sa.make_url("postgresql+jdbc_wrapper:///?jdbc_driver=org.postgresql.Driver")
-    query = dict(url.query)
-    query["jdbc_dsn"] = jdbc_connection_string
-    query["jdbc_modules"] = tuple(str(module) for module in modules)
+def create_url(
+    jdbc_connection_string: str, driver: str, *modules: Path
+) -> sa.engine.url.URL:
+    url = sa.make_url("postgresql+jdbc_wrapper://")
+    query = {
+        "jdbc_dsn": jdbc_connection_string,
+        "jdbc_driver": driver,
+        "jdbc_modules": tuple(str(module) for module in modules),
+    }
     return url.set(query=query)
 
 
-async def main(jdbc_connection_string: str, postgresql_jar_url: str) -> None:
+async def main(jdbc_connection_string: str) -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
-        postgresql_jar = Path(temp_dir) / "postgresql.jar"
-        urlretrieve(postgresql_jar_url, postgresql_jar)
+        loader = PostgresqlLoader(base_dir=temp_dir)
+        modules = loader.load_latest()
 
-        url = create_url(jdbc_connection_string, postgresql_jar)
+        url = create_url(jdbc_connection_string, loader.default_driver, *modules)
         engine = sa_asyncio.create_async_engine(url)
         async with sa_asyncio.AsyncSession(engine) as session:
             await session.execute(
