@@ -12,7 +12,7 @@ from typing_extensions import TypeVar
 from jdbc_wrapper import exceptions
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Callable, Mapping, MutableSequence
     from os import PathLike
 
 __all__ = []
@@ -148,21 +148,20 @@ def parse_url(path: str | PathLike[str]) -> Any:
 
 
 def load_driver_instance(name: str, *modules: str | PathLike[str]) -> Any:
-    url_array = None
-
     if modules:
+        url_array: MutableSequence[Any]
         url_array = jpype.JArray(jpype.java.net.URL)(len(modules))
         for index, module in enumerate(modules):
             url_array[index] = parse_url(module)
 
-    if url_array is None:
-        driver_class = jpype.java.lang.Class.forName(name)
-    else:
         driver_class = jpype.java.lang.Class.forName(
             name,
             True,  # noqa: FBT003
             jpype.java.net.URLClassLoader(url_array),
         )
+    else:
+        driver_class = jpype.java.lang.Class.forName(name)
+
     return driver_class.newInstance()
 
 
