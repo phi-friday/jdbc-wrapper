@@ -5,7 +5,11 @@ from typing import TYPE_CHECKING, Any
 from typing_extensions import override
 
 from jdbc_wrapper._loader.github import GithubReleaseLoader
-from jdbc_wrapper.const import DEFAULT_MSSQL_JDBC_OWNER, DEFAULT_MSSQL_JDBC_REPO
+from jdbc_wrapper.const import (
+    DEFAULT_MSSQL_JDBC_DRIVER,
+    DEFAULT_MSSQL_JDBC_OWNER,
+    DEFAULT_MSSQL_JDBC_REPO,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -15,6 +19,8 @@ __all__ = []
 
 
 class MssqlLoader(GithubReleaseLoader):
+    default_driver = DEFAULT_MSSQL_JDBC_DRIVER
+
     def __init__(
         self,
         owner: str | None = None,

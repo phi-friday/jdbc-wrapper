@@ -6,6 +6,7 @@ from typing_extensions import override
 
 from jdbc_wrapper._loader.github import GithubReleaseLoader
 from jdbc_wrapper.const import (
+    DEFAULT_POSTGRESQL_JDBC_DRIVER,
     DEFAULT_POSTGRESQL_JDBC_OWNER,
     DEFAULT_POSTGRESQL_JDBC_REPO,
 )
@@ -18,6 +19,8 @@ __all__ = []
 
 
 class PostgresqlLoader(GithubReleaseLoader):
+    default_driver = DEFAULT_POSTGRESQL_JDBC_DRIVER
+
     def __init__(
         self,
         owner: str | None = None,

@@ -6,7 +6,7 @@ import tempfile
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 from urllib.request import urlretrieve
 
 if TYPE_CHECKING:
@@ -17,6 +17,8 @@ __all__ = []
 
 
 class BaseLoader(ABC):
+    default_driver: ClassVar[str] = "base"
+
     def __init__(self, base_dir: str | PathLike[str] | None = None) -> None:
         self._fix_macos_urllib_warning()
         self._base_dir = base_dir

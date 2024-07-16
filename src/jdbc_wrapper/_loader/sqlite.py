@@ -9,6 +9,7 @@ from typing_extensions import override
 
 from jdbc_wrapper._loader.github import GithubReleaseLoader
 from jdbc_wrapper.const import (
+    DEFAULT_SQLITE_JDBC_DRIVER,
     DEFAULT_SQLITE_JDBC_OWNER,
     DEFAULT_SQLITE_JDBC_REPO,
     SLF4J_JDBC_OWNER,
@@ -25,6 +26,8 @@ __all__ = []
 
 
 class SQliteLoader(GithubReleaseLoader):
+    default_driver = DEFAULT_SQLITE_JDBC_DRIVER
+
     def __init__(
         self,
         owner: str | None = None,
@@ -69,6 +72,7 @@ class SQliteLoader(GithubReleaseLoader):
 
 
 class Slf4jLoader(GithubReleaseLoader):
+    default_driver = "slf4j"
     _stable_version_pattern: ClassVar[re.Pattern[str]] = re.compile(
         r"^v_(?P<major>\d+)\.(?P<minor>\d+).(?P<patch>\d+)$"
     )
