@@ -60,9 +60,10 @@ class SQliteLoader(GithubReleaseLoader):
 
     @override
     def load_latest(self, path: str | PathLike[str] | None = None) -> Sequence[Path]:
+        sl4j_loader = Slf4jLoader()
         with ThreadPoolExecutor(2) as pool:
             future_self = pool.submit(super().load_latest, path)
-            future_slf4j = pool.submit(super().load_latest, None)
+            future_slf4j = pool.submit(sl4j_loader.load_latest, None)
             wait([future_self, future_slf4j], return_when="ALL_COMPLETED")
             return [*future_self.result(), *future_slf4j.result()]
 
