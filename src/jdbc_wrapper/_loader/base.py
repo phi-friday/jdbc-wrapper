@@ -46,8 +46,8 @@ class BaseLoader(ABC, metaclass=BaseLoaderMeta):
         self._fix_macos_urllib_warning()
         self._base_dir = base_dir
 
-    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
-        new = super().__new__(cls, *args, **kwargs)
+    def __new__(cls, *args: Any, **kwargs: Any) -> Self:  # noqa: ARG003
+        new = super().__new__(cls)
         object.__setattr__(new, "default_driver", cls.default_driver)
         return new
 
