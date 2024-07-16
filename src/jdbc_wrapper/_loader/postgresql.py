@@ -19,7 +19,7 @@ __all__ = []
 
 
 class PostgresqlLoader(GithubReleaseLoader):
-    default_driver = DEFAULT_POSTGRESQL_JDBC_DRIVER
+    _default_driver = DEFAULT_POSTGRESQL_JDBC_DRIVER
 
     def __init__(
         self,

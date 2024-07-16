@@ -26,7 +26,7 @@ __all__ = []
 
 
 class SQliteLoader(GithubReleaseLoader):
-    default_driver = DEFAULT_SQLITE_JDBC_DRIVER
+    _default_driver = DEFAULT_SQLITE_JDBC_DRIVER
 
     def __init__(
         self,
@@ -72,7 +72,7 @@ class SQliteLoader(GithubReleaseLoader):
 
 
 class Slf4jLoader(GithubReleaseLoader):
-    default_driver = "slf4j"
+    _default_driver = "slf4j"
     _stable_version_pattern: ClassVar[re.Pattern[str]] = re.compile(
         r"^v_(?P<major>\d+)\.(?P<minor>\d+).(?P<patch>\d+)$"
     )

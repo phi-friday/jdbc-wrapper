@@ -23,7 +23,7 @@ _created_at_getter = itemgetter("created_at")
 
 
 class GithubReleaseLoader(BaseLoader):
-    default_driver = "github"
+    _default_driver = "github"
     _base_url: ClassVar[str] = "https://api.github.com"
 
     def __init__(

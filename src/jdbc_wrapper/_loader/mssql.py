@@ -19,7 +19,7 @@ __all__ = []
 
 
 class MssqlLoader(GithubReleaseLoader):
-    default_driver = DEFAULT_MSSQL_JDBC_DRIVER
+    _default_driver = DEFAULT_MSSQL_JDBC_DRIVER
 
     def __init__(
         self,

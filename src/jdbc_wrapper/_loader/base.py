@@ -4,10 +4,12 @@ import os
 import sys
 import tempfile
 import uuid
-from abc import ABC, abstractmethod
+from abc import ABC, ABCMeta, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any
 from urllib.request import urlretrieve
+
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -16,12 +18,38 @@ if TYPE_CHECKING:
 __all__ = []
 
 
-class BaseLoader(ABC):
-    default_driver: ClassVar[str] = "base"
+class BaseLoaderMeta(ABCMeta):
+    @property
+    def default_driver(cls) -> str:
+        return cls._loader_default_driver  # pyright: ignore[reportAttributeAccessIssue]
+
+    def __new__(
+        cls,
+        name: str,
+        bases: tuple[type[Any], ...],
+        namespace: dict[str, Any],
+        **kwargs: Any,
+    ) -> Any:
+        default_driver = namespace.pop("_default_driver", None)
+        if default_driver:
+            namespace["_loader_default_driver"] = default_driver
+
+        return super().__new__(cls, name, bases, namespace, **kwargs)
+
+
+class BaseLoader(ABC, metaclass=BaseLoaderMeta):
+    default_driver: str
+
+    _default_driver = "base"
 
     def __init__(self, base_dir: str | PathLike[str] | None = None) -> None:
         self._fix_macos_urllib_warning()
         self._base_dir = base_dir
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
+        new = super().__new__(cls, *args, **kwargs)
+        object.__setattr__(new, "default_driver", cls.default_driver)
+        return new
 
     def _fix_macos_urllib_warning(self) -> None:
         if sys.platform.startswith("darwin"):
