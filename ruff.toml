@@ -91,7 +91,7 @@ ignore = [
 
 [lint.per-file-ignores]
 "examples/**/example*.py" = ['INP001', "T203", "D", "S310", "TCH003"]
-"tests/**/*.py" = ["TCH", "D", "ANN201"]
+"tests/**/*.py" = ["TCH", "D", "ANN201", "ANN001","S101"]
 
 [format]
 indent-style = "space"

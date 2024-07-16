@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import json
 import os
-import tempfile
+import re
+import shutil
 import uuid
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
-from typing import Any
 
 import filelock
 import pytest
@@ -15,19 +14,43 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine as sa_create_async_engine
 from sqlalchemy.orm import Session
 
+from jdbc_wrapper._loader import find_loader
+from jdbc_wrapper._loader import load as load_jdbc_modules
+
 # isort: off
 import anyio  # noqa: F401 # pyright: ignore[reportUnusedImport]
-import jdbc_wrapper  # noqa: F401 # pyright: ignore[reportUnusedImport]
 # isort: on
 
 test_dir = Path(__file__).parent
 
 
 def _create_temp_dir() -> Path:
-    temp_dir = tempfile.gettempdir()
-    temp_path = Path(temp_dir) / uuid.uuid4().hex
+    temp_path = test_dir.parent / ".cache" / uuid.uuid4().hex
     temp_path.mkdir(parents=True, exist_ok=True)
     return temp_path
+
+
+def _clear_temp_dir(temp_dir: Path, worker_id: str) -> Generator[Path, None, None]:
+    if worker_id == "master":
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+        return
+
+    self_dir = temp_dir / "self"
+    self_dir.mkdir(exist_ok=True)
+    self_id = "".join(re.findall(r"\d+", worker_id))
+    self_lock = self_dir / self_id
+    self_lock.touch(exist_ok=False)
+    yield temp_dir
+
+    clear_lock = temp_dir / "clear.lock"
+    with filelock.FileLock(clear_lock):
+        workers = list(self_dir.glob("*"))
+        flag = len(workers) == 1 and workers[0] == self_id
+        self_lock.unlink(missing_ok=False)
+
+    if flag:
+        shutil.rmtree(temp_dir)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -39,19 +62,22 @@ def anyio_backend() -> str:
 def create_temp_dir(worker_id: str) -> Generator[Path, None, None]:
     if worker_id == "master":
         # only run once
-        yield _create_temp_dir()
+        temp_dir = _create_temp_dir()
+        yield from _clear_temp_dir(temp_dir, worker_id)
         return
 
     temp_dir_lock = test_dir / "temp_dir.lock"
+    temp_file = test_dir / "temp_dir.lock"
     with filelock.FileLock(temp_dir_lock):
-        if temp_dir_lock.is_file():
-            with temp_dir_lock.open("r") as f:
+        if temp_file.is_file():
+            with temp_file.open("r") as f:
                 temp_dir = Path(f.read())
         else:
             temp_dir = _create_temp_dir()
-            with temp_dir_lock.open("w+") as f:
+            with temp_file.open("w+") as f:
                 f.write(str(temp_dir))
-        yield temp_dir
+
+    yield from _clear_temp_dir(temp_dir, worker_id)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -60,29 +86,22 @@ def temp_dir(create_temp_dir: Path) -> Path:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def url(temp_dir: Path) -> sa.engine.url.URL:
+def url_without_query(temp_dir: Path) -> sa.engine.url.URL:
     backend = os.getenv("DATABASE_BACKEND", "")
-    driver = os.getenv("DATABASE_DRIVER", "")
-    driver_modules = os.getenv("DATABASE_DRIVER_MODULES", "")
     username = os.getenv("DATABASE_USERNAME", "")
     password = os.getenv("DATABASE_PASSWORD", "")
     host = os.getenv("DATABASE_HOST", "")
     port_str = os.getenv("DATABASE_PORT", "")
-    query_str = os.getenv("DATABASE_QUERY", "{}")
     database = os.getenv("DATABASE_NAME", "")
 
     if not backend:
         # setup default
         backend = "sqlite"
-        driver = "org.sqlite.JDBC"
         database_path = temp_dir / "test.db"
         database_path.touch(exist_ok=True)
         database = str(database_path)
 
     port = int(port_str) if port_str else None
-    query: dict[str, Any] = json.loads(query_str)
-    query["jdbc_driver"] = driver
-    query["jdbc_modules"] = tuple(driver_modules.split(","))
 
     return sa.engine.url.URL.create(
         drivername=f"{backend}+jdbc_wrapper",
@@ -91,8 +110,39 @@ def url(temp_dir: Path) -> sa.engine.url.URL:
         host=host,
         port=port,
         database=database,
-        query=query,
     )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def url(
+    url_without_query: sa.engine.url.URL, temp_dir: Path, worker_id: str
+) -> sa.engine.url.URL:
+    backend = url_without_query.get_backend_name().lower()
+    module_dir = temp_dir / "jdbc_modules"
+    module_dir.mkdir(exist_ok=True)
+    if worker_id == "master":
+        driver, modules = load_jdbc_modules(backend, module_dir)
+        return url_without_query.set(
+            query={"jdbc_modules": tuple(map(str, modules)), "jdbc_driver": driver}
+        )
+
+    module_lock = temp_dir / "jdbc_modules.lock"
+    module_file = temp_dir / "jdbc_modules"
+    with filelock.FileLock(temp_dir / "jdbc_modules.lock"):
+        if module_file.is_file():
+            loader = find_loader(backend)
+            modules = list(module_dir.glob("*.jar"))
+            return url_without_query.set(
+                query={
+                    "jdbc_modules": tuple(map(str, modules)),
+                    "jdbc_driver": loader.default_driver,
+                }
+            )
+        module_lock.touch(exist_ok=False)
+        driver, modules = load_jdbc_modules(backend, module_dir)
+        return url_without_query.set(
+            query={"jdbc_modules": tuple(map(str, modules)), "jdbc_driver": driver}
+        )
 
 
 @pytest.fixture(scope="session", autouse=True)
