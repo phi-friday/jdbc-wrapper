@@ -3,7 +3,11 @@ name = "jdbc-wrapper"
 version = "0.1.0"
 description = "Add your description here"
 authors = [{ name = "phi", email = "phi.friday@gmail.com" }]
-dependencies = ["jpype1>=1.2.1", "typing-extensions>=4.4.0"]
+dependencies = [
+    "jpype1>=1.2.1",
+    "typing-extensions>=4.4.0",
+    "tomli>=1.1.0 ; python_version < '3.11'",
+]
 license = { file = "LICENSE" }
 readme = "README.md"
 classifiers = [
