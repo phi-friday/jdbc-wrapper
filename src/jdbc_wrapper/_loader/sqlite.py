@@ -74,7 +74,7 @@ class SQliteLoader(GithubReleaseLoader):
 class Slf4jLoader(GithubReleaseLoader):
     _default_driver = "slf4j"
     _stable_version_pattern: ClassVar[re.Pattern[str]] = re.compile(
-        r"^v_(?P<major>\d+)\.(?P<minor>\d+).(?P<patch>\d+)$"
+        r"^v_(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$"
     )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: ARG002

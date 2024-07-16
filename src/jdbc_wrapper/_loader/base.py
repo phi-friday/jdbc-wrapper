@@ -77,15 +77,21 @@ class BaseLoader(ABC, metaclass=BaseLoaderMeta):
     def load_latest(self, path: str | PathLike[str] | None = None) -> Sequence[Path]:
         latest = self.find_latest()
         self.validate_url(latest)
-        path = _create_temp_file(self._base_dir, ".jar") if path is None else Path(path)
+        path = (
+            self._create_temp_file(self._base_dir, ".jar")
+            if path is None
+            else Path(path)
+        )
         urlretrieve(latest, path)  # noqa: S310
         return [path]
 
-
-def _create_temp_file(base_dir: str | PathLike[str] | None, suffix: str | None) -> Path:
-    temp_dir = base_dir if base_dir else tempfile.gettempdir()
-    temp_path = Path(temp_dir) / uuid.uuid4().hex
-    if suffix:
-        temp_path = temp_path.with_suffix(suffix)
-    temp_path.touch(exist_ok=False)
-    return temp_path
+    @staticmethod
+    def _create_temp_file(
+        base_dir: str | PathLike[str] | None, suffix: str | None
+    ) -> Path:
+        temp_dir = base_dir if base_dir else tempfile.gettempdir()
+        temp_path = Path(temp_dir) / uuid.uuid4().hex
+        if suffix:
+            temp_path = temp_path.with_suffix(suffix)
+        temp_path.touch(exist_ok=False)
+        return temp_path
