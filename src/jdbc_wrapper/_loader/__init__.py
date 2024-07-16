@@ -1,3 +1,9 @@
+"""This module provides the Loader class for downloading jdbc drivers for each database.
+
+However, it does not take responsibility for any bugs or issues
+that may arise from its usage.
+"""
+
 from __future__ import annotations
 
 from jdbc_wrapper._loader.mssql import MssqlLoader
