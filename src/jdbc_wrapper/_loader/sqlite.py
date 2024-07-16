@@ -63,7 +63,7 @@ class SQliteLoader(GithubReleaseLoader):
 
     @override
     def load_latest(self, path: str | PathLike[str] | None = None) -> Sequence[Path]:
-        sl4j_loader = Slf4jLoader()
+        sl4j_loader = Slf4jLoader(base_dir=self._base_dir)
         with ThreadPoolExecutor(2) as pool:
             future_self = pool.submit(super().load_latest, path)
             future_slf4j = pool.submit(sl4j_loader.load_latest, None)
@@ -77,8 +77,13 @@ class Slf4jLoader(GithubReleaseLoader):
         r"^v_(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$"
     )
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: ARG002
-        super().__init__(SLF4J_JDBC_OWNER, SLF4J_JDBC_REPO, None)
+    def __init__(
+        self,
+        *args: Any,  # noqa: ARG002
+        base_dir: str | PathLike[str] | None = None,
+        **kwargs: Any,  # noqa: ARG002
+    ) -> None:
+        super().__init__(SLF4J_JDBC_OWNER, SLF4J_JDBC_REPO, None, base_dir=base_dir)
 
     @property
     def _tag_list_url(self) -> str:
