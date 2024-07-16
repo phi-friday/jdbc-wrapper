@@ -33,8 +33,9 @@ class GithubReleaseLoader(BaseLoader):
         *,
         list_filter: Callable[[dict[str, Any]], bool] | None = None,
         asset_filter: Callable[[dict[str, Any]], bool] | None = None,
+        base_dir: str | PathLike[str] | None = None,
     ) -> None:
-        super().__init__()
+        super().__init__(base_dir)
         self._owner = owner
         self._repo = repo
         self._path = path

@@ -17,8 +17,9 @@ __all__ = []
 
 
 class BaseLoader(ABC):
-    def __init__(self) -> None:
+    def __init__(self, base_dir: str | PathLike[str] | None = None) -> None:
         self._fix_macos_urllib_warning()
+        self._base_dir = base_dir
 
     def _fix_macos_urllib_warning(self) -> None:
         if sys.platform.startswith("darwin"):
@@ -46,13 +47,13 @@ class BaseLoader(ABC):
     def load_latest(self, path: str | PathLike[str] | None = None) -> Sequence[Path]:
         latest = self.find_latest()
         self.validate_url(latest)
-        path = _create_temp_file(".jar") if path is None else Path(path)
+        path = _create_temp_file(self._base_dir, ".jar") if path is None else Path(path)
         urlretrieve(latest, path)  # noqa: S310
         return [path]
 
 
-def _create_temp_file(suffix: str | None) -> Path:
-    temp_dir = tempfile.gettempdir()
+def _create_temp_file(base_dir: str | PathLike[str] | None, suffix: str | None) -> Path:
+    temp_dir = base_dir if base_dir else tempfile.gettempdir()
     temp_path = Path(temp_dir) / uuid.uuid4().hex
     if suffix:
         temp_path = temp_path.with_suffix(suffix)

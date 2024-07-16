@@ -33,6 +33,7 @@ class SQliteLoader(GithubReleaseLoader):
         *,
         list_filter: Callable[[dict[str, Any]], bool] | None = None,
         asset_filter: Callable[[dict[str, Any]], bool] | None = None,
+        base_dir: str | PathLike[str] | None = None,
     ) -> None:
         if not owner or not repo:
             pass  # FIXME: log warning
@@ -42,6 +43,7 @@ class SQliteLoader(GithubReleaseLoader):
             path,
             list_filter=list_filter,
             asset_filter=asset_filter,
+            base_dir=base_dir,
         )
 
     @override
