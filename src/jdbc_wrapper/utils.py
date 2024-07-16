@@ -45,6 +45,11 @@ class Java:
 
         self.attach_thread()
 
+    def shutdown(self) -> None:
+        if not self.is_started():
+            return
+        jpype.shutdownJVM()
+
     def add_modules(self, *modules: str | PathLike[str]) -> None:
         for module in modules:
             path = Path(module).resolve()
