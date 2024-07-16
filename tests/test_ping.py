@@ -11,3 +11,11 @@ def test_ping(sync_session):
     value = fetch.scalar_one()
     assert isinstance(value, int)
     assert value == 1
+
+
+def test_ping2(sync_session):
+    stmt = sa.text("select 1")
+    fetch = sync_session.execute(stmt)
+    value = fetch.scalar_one()
+    assert isinstance(value, int)
+    assert value == 1

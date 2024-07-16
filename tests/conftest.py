@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -21,44 +22,63 @@ from jdbc_wrapper._loader import load as load_jdbc_modules
 import anyio  # noqa: F401 # pyright: ignore[reportUnusedImport]
 # isort: on
 
-test_dir = Path(__file__).parent
+test_dir = Path(__file__).parent  # root/tests
+cache_dir = test_dir.parent / ".cache"  # root/.cache
 
 
 def _create_temp_dir() -> Path:
-    temp_path = test_dir.parent / ".cache" / uuid.uuid4().hex
+    temp_path = cache_dir / uuid.uuid4().hex  # root/.cache/uuid
     temp_path.mkdir(parents=True, exist_ok=True)
     return temp_path
 
 
-def _clear_temp_dir(temp_dir: Path, worker_id: str) -> Generator[Path, None, None]:
+def _clear_temp_dir(
+    _temp_dir: Path, worker_id: str, *files: Path
+) -> Generator[Path, None, None]:
     if worker_id == "master":
-        yield temp_dir
-        shutil.rmtree(temp_dir)
+        try:
+            yield _temp_dir
+        finally:
+            shutil.rmtree(_temp_dir)
         return
 
-    self_dir = temp_dir / "self"
+    self_dir = _temp_dir / "self"
+    remain_dir = _temp_dir / "remain"
     self_dir.mkdir(exist_ok=True)
+    remain_dir.mkdir(exist_ok=True)
+
     self_id = "".join(re.findall(r"\d+", worker_id))
     self_lock = self_dir / self_id
+    remain_lock = remain_dir / self_id
     self_lock.touch(exist_ok=False)
-    yield temp_dir
+    remain_lock.touch(exist_ok=False)
+    maxima = int(os.environ["PYTEST_XDIST_WORKER_COUNT"])
+    try:
+        yield _temp_dir
+    finally:
+        clear_lock = _temp_dir / "clear.lock"
+        with filelock.FileLock(clear_lock):
+            workers = list(self_dir.glob("*"))
+            remains = list(remain_dir.glob("*"))
+            flag = (
+                len(remains) == maxima
+                and len(workers) == 1
+                and workers[0].name == self_id
+            )
+            self_lock.unlink(missing_ok=False)
 
-    clear_lock = temp_dir / "clear.lock"
-    with filelock.FileLock(clear_lock):
-        workers = list(self_dir.glob("*"))
-        flag = len(workers) == 1 and workers[0] == self_id
-        self_lock.unlink(missing_ok=False)
-
-    if flag:
-        shutil.rmtree(temp_dir)
+        if flag:
+            shutil.rmtree(_temp_dir)
+            for file in files:
+                file.unlink(missing_ok=False)
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def anyio_backend() -> str:
     return "asyncio"
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def create_temp_dir(worker_id: str) -> Generator[Path, None, None]:
     if worker_id == "master":
         # only run once
@@ -66,8 +86,8 @@ def create_temp_dir(worker_id: str) -> Generator[Path, None, None]:
         yield from _clear_temp_dir(temp_dir, worker_id)
         return
 
-    temp_dir_lock = test_dir / "temp_dir.lock"
-    temp_file = test_dir / "temp_dir.lock"
+    temp_dir_lock = cache_dir / "temp_dir.lock"
+    temp_file = cache_dir / "temp_file"
     with filelock.FileLock(temp_dir_lock):
         if temp_file.is_file():
             with temp_file.open("r") as f:
@@ -77,15 +97,15 @@ def create_temp_dir(worker_id: str) -> Generator[Path, None, None]:
             with temp_file.open("w+") as f:
                 f.write(str(temp_dir))
 
-    yield from _clear_temp_dir(temp_dir, worker_id)
+    yield from _clear_temp_dir(temp_dir, worker_id, temp_file, temp_dir_lock)
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def temp_dir(create_temp_dir: Path) -> Path:
     return create_temp_dir
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def url_without_query(temp_dir: Path) -> sa.engine.url.URL:
     backend = os.getenv("DATABASE_BACKEND", "")
     username = os.getenv("DATABASE_USERNAME", "")
@@ -98,7 +118,6 @@ def url_without_query(temp_dir: Path) -> sa.engine.url.URL:
         # setup default
         backend = "sqlite"
         database_path = temp_dir / "test.db"
-        database_path.touch(exist_ok=True)
         database = str(database_path)
 
     port = int(port_str) if port_str else None
@@ -113,7 +132,7 @@ def url_without_query(temp_dir: Path) -> sa.engine.url.URL:
     )
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def url(
     url_without_query: sa.engine.url.URL, temp_dir: Path, worker_id: str
 ) -> sa.engine.url.URL:
@@ -127,25 +146,25 @@ def url(
         )
 
     module_lock = temp_dir / "jdbc_modules.lock"
-    module_file = temp_dir / "jdbc_modules"
-    with filelock.FileLock(temp_dir / "jdbc_modules.lock"):
+    module_file = temp_dir / "jdbc_module_file"
+    with filelock.FileLock(module_lock):
         if module_file.is_file():
             loader = find_loader(backend)
-            modules = list(module_dir.glob("*.jar"))
+            with module_file.open("r") as f:
+                modules = json.load(f)
             return url_without_query.set(
-                query={
-                    "jdbc_modules": tuple(map(str, modules)),
-                    "jdbc_driver": loader.default_driver,
-                }
+                query={"jdbc_modules": modules, "jdbc_driver": loader.default_driver}
             )
-        module_lock.touch(exist_ok=False)
         driver, modules = load_jdbc_modules(backend, module_dir)
+        modules = list(map(str, modules))
+        with module_file.open("w+") as f:
+            json.dump(modules, f)
         return url_without_query.set(
-            query={"jdbc_modules": tuple(map(str, modules)), "jdbc_driver": driver}
+            query={"jdbc_modules": modules, "jdbc_driver": driver}
         )
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def create_sync_engine(
     url: sa.engine.url.URL,
 ) -> Generator[sa.engine.Engine, None, None]:
@@ -156,12 +175,12 @@ def create_sync_engine(
         engine.dispose()
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def sync_engine(create_sync_engine: sa.engine.Engine) -> sa.engine.Engine:
     return create_sync_engine
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 async def create_async_engine(
     url: sa.engine.url.URL,
 ) -> AsyncGenerator[AsyncEngine, None]:
@@ -172,7 +191,7 @@ async def create_async_engine(
         await engine.dispose()
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def async_engine(create_async_engine: AsyncEngine) -> AsyncEngine:
     return create_async_engine
 
