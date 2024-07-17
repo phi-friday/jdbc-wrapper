@@ -1,6 +1,7 @@
 # pyright: reportAttributeAccessIssue=false
 from __future__ import annotations
 
+import logging
 from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -21,6 +22,7 @@ _F = TypeVar("_F", bound="Callable[..., Any]")
 _T = TypeVar("_T")
 
 _driver_registry: dict[str, Any] = {}
+logger = logging.getLogger("jdbc_wrapper")
 
 
 class Java:
@@ -29,6 +31,7 @@ class Java:
 
     def start(self, *modules: str | PathLike[str], **kwargs: Any) -> None:
         if self.is_started():
+            logger.debug("JVM is already started. Attaching to JVM.")
             self.attach()
             return
 
@@ -38,19 +41,30 @@ class Java:
 
     def attach(self) -> None:
         if not self.is_started():
+            logger.debug("JVM is not started. Starting JVM.")
             self.start()
 
         if self.attached:
+            logger.debug("Thread is already attached to JVM.")
             return
 
         self.attach_thread()
 
     def shutdown(self) -> None:
         if not self.is_started():
+            logger.debug("JVM is not started. Nothing to shutdown.")
             return
+        logger.warning(
+            "Due to limitations in the JPype, JVM cannot be restarted after shutdown."
+            "see more: https://github.com/jpype-project/jpype/issues/959"
+        )
         jpype.shutdownJVM()
 
     def add_modules(self, *modules: str | PathLike[str]) -> None:
+        if self.is_started():
+            logger.warning("Cannot add modules after JVM is started.")
+            return
+
         for module in modules:
             path = Path(module).resolve()
             jpype.addClassPath(path)
@@ -113,14 +127,18 @@ class Java:
         driver_manager = jpype.java.sql.DriverManager
         jdbc_driver: Any = None
         if driver in _driver_registry:
+            logger.debug("Using cached JDBC driver: %s", driver)
             jdbc_driver = _driver_registry[driver]
         else:
             for driver_instance in driver_manager.getDrivers():
                 if type(driver_instance).__name__ == driver:
+                    logger.debug("Found existing JDBC driver: %s", driver)
                     jdbc_driver = driver_instance
                     break
             else:
+                logger.debug("Loading JDBC driver: %s", driver)
                 jdbc_driver = self.load_driver_instance(driver, *modules)
+                logger.debug("Registering JDBC driver: %s", driver)
                 driver_manager.registerDriver(jdbc_driver)
             _driver_registry.setdefault(driver, jdbc_driver)
 

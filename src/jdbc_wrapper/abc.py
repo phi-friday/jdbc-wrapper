@@ -1,3 +1,4 @@
+# ruff: noqa: D205
 """PEP 249 -- Python Database API Specification v2.0
 
 see more:
@@ -91,7 +92,7 @@ class ConnectionABC(ABC, Generic[_C_co]):
 
         This attribute is useful to avoid exceptions when calling methods
         on a closed connection.
-        """  # noqa: D205
+        """
 
     @abstractmethod
     def __enter__(self) -> Self: ...
@@ -182,7 +183,7 @@ class CursorABC(ABC, Generic[_R_co]):
 
         The attribute is -1 in case no `.execute*()` has been performed on the cursor
         or the rowcount of the last operation is cannot be determined by the interface.
-        """  # noqa: D205
+        """
 
     @abstractmethod
     def callproc(
@@ -308,7 +309,7 @@ class CursorABC(ABC, Generic[_R_co]):
         that a result set has been created by an invocation of the operation.
 
         The same comments as for `.execute()` also apply accordingly to this method.
-        """  # noqa: D205
+        """
         return (
             self._executemany(operation, seq_of_parameters)
             if isinstance(operation, str)
@@ -330,7 +331,7 @@ class CursorABC(ABC, Generic[_R_co]):
         An `Error` (or subclass) exception is raised
         if the previous call to `.execute*()` did not produce any result set
         or no call was issued yet.
-        """  # noqa: D205
+        """
 
     @abstractmethod
     def fetchmany(self, size: int = -1) -> Sequence[_R_co]:
@@ -353,7 +354,7 @@ class CursorABC(ABC, Generic[_R_co]):
         For optimal performance, it is usually best to use the `.arraysize` attribute.
         If the size parameter is used, then it is best for it to retain the same value
         from one `.fetchmany()` call to the next.
-        """  # noqa: D205, RUF002
+        """  # noqa: RUF002
 
     @abstractmethod
     def fetchall(self) -> Sequence[_R_co]:
@@ -365,7 +366,7 @@ class CursorABC(ABC, Generic[_R_co]):
         An `Error` (or subclass) exception is raised
         if the previous call to `.execute*()` did not produce any result set
         or no call was issued yet.
-        """  # noqa: D205, RUF002
+        """  # noqa: RUF002
 
     @abstractmethod
     def nextset(self) -> bool:
@@ -379,7 +380,7 @@ class CursorABC(ABC, Generic[_R_co]):
         An `Error` (or subclass) exception is raised
         if the previous call to `.execute*()` did not produce any result set
         or no call was issued yet.
-        """  # noqa: D205
+        """
 
     @property
     @abstractmethod
@@ -392,7 +393,7 @@ class CursorABC(ABC, Generic[_R_co]):
         with respect to the `.fetchmany()` method,
         but are free to interact with the database a single row at a time.
         It may also be used in the implementation of `.executemany()`.
-        """  # noqa: D205
+        """
 
     @arraysize.setter
     @abstractmethod
@@ -413,7 +414,7 @@ class CursorABC(ABC, Generic[_R_co]):
         (this is useful to avoid predefined areas for large inputs).
 
         This method would be used before the `.execute*()` method is invoked.
-        """  # noqa: D205, RUF002
+        """  # noqa: RUF002
 
     @abstractmethod
     def setoutputsize(self, size: int, column: int = -1) -> None:
@@ -425,7 +426,7 @@ class CursorABC(ABC, Generic[_R_co]):
         for all large columns in the cursor.
 
         This method would be used before the `.execute*()` method is invoked.
-        """  # noqa: D205
+        """
 
     @property
     @abstractmethod
@@ -437,7 +438,7 @@ class CursorABC(ABC, Generic[_R_co]):
         The index can be seen as index of the cursor in a sequence (the result set).
         The next fetch operation will fetch
         the row indexed by `.rownumber` in that sequence.
-        """  # noqa: D205
+        """
 
     @property
     @abstractmethod
@@ -447,7 +448,7 @@ class CursorABC(ABC, Generic[_R_co]):
 
         The attribute simplifies writing polymorph code
         in multi-connection environments.
-        """  # noqa: D205
+        """
 
     @abstractmethod
     def scroll(
@@ -474,7 +475,7 @@ class CursorABC(ABC, Generic[_R_co]):
         when the result set is exhausted for Python versions 2.2 and later.
         Previous versions don’t have the `StopIteration` exception
         and so the method should raise an `IndexError` instead.
-        """  # noqa: D205, RUF002
+        """  # noqa: RUF002
 
     @abstractmethod
     def __iter__(self) -> Iterator[_R_co]:
@@ -494,7 +495,7 @@ class CursorABC(ABC, Generic[_R_co]):
         The semantics of `.lastrowid` are undefined
         in case the last executed statement modified more than one row, e.g.
         when using `INSERT` with `.executemany()`.
-        """  # noqa: D205
+        """
 
     @property
     @abstractmethod
@@ -504,7 +505,7 @@ class CursorABC(ABC, Generic[_R_co]):
 
         This attribute is useful to avoid exceptions when calling methods
         on a closed cursor.
-        """  # noqa: D205
+        """
 
     @property
     @abstractmethod

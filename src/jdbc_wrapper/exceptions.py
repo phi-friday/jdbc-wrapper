@@ -1,3 +1,4 @@
+# ruff: noqa: D205
 """https://peps.python.org/pep-0249/#exceptions"""
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ class Error(jpype_dbapi2.Error, Exception):
     """Exception raised for important warnings
     like data truncations while inserting, etc.
     It must be a subclass of the Python `Exception` class
-    """  # noqa: D205
+    """
 
 
 class Warning(jpype_dbapi2.Warning, Exception):  # noqa: N818, A001
@@ -17,27 +18,27 @@ class Warning(jpype_dbapi2.Warning, Exception):  # noqa: N818, A001
     You can use this to catch all errors with one single `except` statement.
     Warnings are not considered errors and thus should not use this class as base.
     It must be a subclass of the Python `Exception` class
-    """  # noqa: D205
+    """
 
 
 class InterfaceError(jpype_dbapi2.IntegrityError, Error):
     """Exception raised for errors
     that are related to the database interface rather than the database itself.
     It must be a subclass of `Error`.
-    """  # noqa: D205
+    """
 
 
 class DatabaseError(jpype_dbapi2.DatabaseError, Error):
     """Exception raised for errors that are related to the database.
     It must be a subclass of `Error`.
-    """  # noqa: D205
+    """
 
 
 class DataError(jpype_dbapi2.DataError, DatabaseError):
     """Exception raised for errors that are due to problems with the processed data
     like division by zero, numeric value out of range, etc.
     It must be a subclass of `DatabaseError`.
-    """  # noqa: D205
+    """
 
 
 class OperationalError(jpype_dbapi2.OperationalError, DatabaseError):
@@ -49,21 +50,21 @@ class OperationalError(jpype_dbapi2.OperationalError, DatabaseError):
     a transaction could not be processed,
     a memory allocation error occurred during processing,
     etc. It must be a subclass of `DatabaseError`.
-    """  # noqa: D205, RUF002
+    """  # noqa: RUF002
 
 
 class IntegrityError(jpype_dbapi2.IntegrityError, DatabaseError):
     """Exception raised when the relational integrity of the database is affected,
     e.g. a foreign key check fails.
     It must be a subclass of `DatabaseError`.
-    """  # noqa: D205
+    """
 
 
 class InternalError(jpype_dbapi2.InternalError, DatabaseError):
     """Exception raised when the database encounters an internal error,
     e.g. the cursor is not valid anymore, the transaction is out of sync, etc.
     It must be a subclass of `DatabaseError`.
-    """  # noqa: D205
+    """
 
 
 class ProgrammingError(jpype_dbapi2.ProgrammingError, DatabaseError):
@@ -72,7 +73,7 @@ class ProgrammingError(jpype_dbapi2.ProgrammingError, DatabaseError):
     syntax error in the SQL statement,
     wrong number of parameters specified, etc.
     It must be a subclass of `DatabaseError`.
-    """  # noqa: D205
+    """
 
 
 class NotSupportedError(jpype_dbapi2.NotSupportedError, DatabaseError):
@@ -81,4 +82,4 @@ class NotSupportedError(jpype_dbapi2.NotSupportedError, DatabaseError):
     requesting a `.rollback()` on a connection
     that does not support transaction or has transactions turned off.
     It must be a subclass of `DatabaseError`.
-    """  # noqa: D205
+    """
