@@ -106,7 +106,7 @@ class Java:
     def attach_thread(cls) -> None:
         thread = jpype.java.lang.Thread
         if not thread.isAttached():
-            thread.attach()
+            thread.attachAsDaemon()
 
     def get_connection(
         self,
