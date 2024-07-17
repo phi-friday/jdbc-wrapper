@@ -187,6 +187,9 @@ class AsyncCursor(AsyncCursorABC[_R_co], Generic[_R_co]):
         from jdbc_wrapper.utils_async import ensure_close, greenlet_spawn
 
         if self.is_closed:
+            if func.__name__ == "close":
+                await asyncio.sleep(0)
+                return None  # pyright: ignore[reportReturnType]
             raise exceptions.OperationalError("Cursor is closed")
 
         wrapped = self._wrap_thread_id_error(func)

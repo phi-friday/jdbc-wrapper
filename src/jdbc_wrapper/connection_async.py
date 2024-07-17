@@ -95,6 +95,9 @@ class AsyncConnection(AsyncConnectionABC[AsyncCursor[Any]]):
         from jdbc_wrapper.utils_async import ensure_close, greenlet_spawn
 
         if self.is_closed:
+            if func.__name__ == "close":
+                await asyncio.sleep(0)
+                return None  # pyright: ignore[reportReturnType]
             raise exceptions.OperationalError("Connection is closed")
 
         try:

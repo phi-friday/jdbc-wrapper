@@ -11,10 +11,11 @@ from pathlib import Path
 import filelock
 import pytest
 import sqlalchemy as sa
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine as sa_create_async_engine
 from sqlalchemy.orm import Session
 
+import jdbc_wrapper
 from jdbc_wrapper._loader import find_loader
 from jdbc_wrapper._loader import load as load_jdbc_modules
 
@@ -194,6 +195,78 @@ async def create_async_engine(
 @pytest.fixture(scope="session")
 def async_engine(create_async_engine: AsyncEngine) -> AsyncEngine:
     return create_async_engine
+
+
+@pytest.fixture()
+def create_sync_raw_connection(
+    sync_engine: sa.engine.Engine,
+) -> Generator[jdbc_wrapper.Connection, None, None]:
+    proxy = sync_engine.raw_connection()
+    connection = proxy.driver_connection
+    assert isinstance(connection, jdbc_wrapper.Connection)
+    try:
+        with connection:
+            yield connection
+    finally:
+        proxy.close()
+
+
+@pytest.fixture()
+def sync_raw_connection(
+    create_sync_raw_connection: jdbc_wrapper.Connection,
+) -> jdbc_wrapper.Connection:
+    return create_sync_raw_connection
+
+
+@pytest.fixture()
+async def create_async_raw_connection(
+    async_engine: AsyncEngine,
+) -> AsyncGenerator[jdbc_wrapper.AsyncConnection, None]:
+    proxy = await async_engine.raw_connection()
+    sa_connection = proxy.driver_connection
+    assert isinstance(sa_connection, sa.AdaptedConnection)
+    connection = sa_connection.driver_connection
+    assert isinstance(connection, jdbc_wrapper.AsyncConnection)
+    try:
+        async with connection:
+            yield connection
+    finally:
+        await connection.close()
+        proxy.close()
+
+
+@pytest.fixture()
+async def async_raw_connection(
+    create_async_raw_connection: jdbc_wrapper.AsyncConnection,
+) -> jdbc_wrapper.AsyncConnection:
+    return create_async_raw_connection
+
+
+@pytest.fixture()
+def create_sync_connection(
+    sync_engine: sa.engine.Engine,
+) -> Generator[sa.Connection, None, None]:
+    with sync_engine.connect() as conn:
+        yield conn
+
+
+@pytest.fixture()
+def sync_connection(create_sync_connection: sa.Connection) -> sa.Connection:
+    return create_sync_connection
+
+
+@pytest.fixture()
+async def create_async_connection(
+    async_engine: AsyncEngine,
+) -> AsyncGenerator[AsyncConnection, None]:
+    async with async_engine.connect() as conn:
+        yield conn
+        await conn.close()
+
+
+@pytest.fixture()
+def async_connection(create_async_connection: AsyncConnection) -> AsyncConnection:
+    return create_async_connection
 
 
 @pytest.fixture()
