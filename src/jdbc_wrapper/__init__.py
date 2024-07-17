@@ -25,6 +25,7 @@ from jdbc_wrapper.exceptions import (
     OperationalError,
     ProgrammingError,
 )
+from jdbc_wrapper.log import _setup_config
 from jdbc_wrapper.types import Binary, Datetime, Decimal, Float, Number, String, Text
 
 if TYPE_CHECKING:
@@ -65,6 +66,7 @@ __all__ = [
 ]
 
 __version__: str
+_setup_config()
 
 
 @overload
