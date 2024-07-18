@@ -59,9 +59,17 @@ packages = ["src/jdbc_wrapper"]
 addopts = "--cov=src/jdbc_wrapper --cov-report html --cov-report=xml"
 testpaths = ["tests"]
 
+[tool.coverage.run]
+omit = [
+    "tests/**/*",
+    "src/jdbc_wrapper/_loader/**/*.py",
+    "src/jdbc_wrapper/**/utils*.py",
+]
+
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
+    "if sys.version_info >=",
 ]
