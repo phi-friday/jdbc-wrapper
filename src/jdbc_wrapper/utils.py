@@ -194,6 +194,8 @@ def wrap_errors(func: _F) -> _F:
 def catch_errors(func: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:  # noqa: C901
     try:
         return func(*args, **kwargs)
+    except (exceptions.Error, exceptions.Warning):
+        raise
     except jpype_dbapi2.NotSupportedError as exc:
         raise exceptions.NotSupportedError(*exc.args) from exc
     except jpype_dbapi2.ProgrammingError as exc:
