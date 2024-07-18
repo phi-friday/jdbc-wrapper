@@ -14,6 +14,11 @@ from typing_extensions import TypeVar, override
 
 from jdbc_wrapper.abc import TypePipeline
 
+try:
+    from sqlalchemy import quoted_name
+except ImportError:
+    quoted_name = str
+
 __all__ = []
 
 _registry = {}
@@ -74,7 +79,7 @@ class PipelineMeta(ABCMeta):
 
 
 class BasePipeline(TypePipeline[_T], Generic[_T], metaclass=PipelineMeta):
-    dtype: type[_T] | str
+    dtypes: tuple[type[_T] | str, ...]
     jtypes: Callable[[], tuple[Any, ...]] | tuple[Any, ...] = ()
 
     def __init_subclass__(cls) -> None:
@@ -82,12 +87,10 @@ class BasePipeline(TypePipeline[_T], Generic[_T], metaclass=PipelineMeta):
         _registry_queue.add(cls)
 
     def __init__(self) -> None:
-        _registry.setdefault(self.dtype, self)
-        if isinstance(self.dtype, str):
-            dtype_str = self.dtype
-        else:
-            dtype_str = self.dtype.__qualname__
-        _registry.setdefault(dtype_str.upper(), self)
+        for dtype in self.dtypes:
+            _registry.setdefault(dtype, self)
+            dtype_str = dtype if isinstance(dtype, str) else dtype.__qualname__
+            _registry.setdefault(dtype_str.upper(), self)
 
         jtypes = self.jtypes() if callable(self.jtypes) else self.jtypes
         for jtype in jtypes:
@@ -95,7 +98,7 @@ class BasePipeline(TypePipeline[_T], Generic[_T], metaclass=PipelineMeta):
 
 
 class ObjectPipeline(BasePipeline[object]):
-    dtype = object
+    dtypes = (object,)
     jtypes = lambda: (jpype.JObject, jpype.java.lang.Object)
 
     @override
@@ -110,7 +113,7 @@ class ObjectPipeline(BasePipeline[object]):
 
 
 class NullPipeline(BasePipeline[None]):
-    dtype = type(None)
+    dtypes = (type(None),)
 
     @override
     def java_to_python(self, value: Any) -> None:
@@ -122,7 +125,7 @@ class NullPipeline(BasePipeline[None]):
 
 
 class BooleanPipeline(BasePipeline[bool]):
-    dtype = bool
+    dtypes = (bool,)
     jtypes = lambda: (jpype.JBoolean, jpype.java.lang.Boolean)
 
     @override
@@ -137,12 +140,13 @@ class BooleanPipeline(BasePipeline[bool]):
 
 
 class StrPipeline(BasePipeline[str]):
-    dtype = str
+    dtypes = (str, quoted_name)
     jtypes = lambda: (
         jpype.JString,
         jpype.JChar,
         jpype.java.lang.String,
         jpype.java.sql.Clob,
+        quoted_name,
     )
 
     @override
@@ -155,7 +159,7 @@ class StrPipeline(BasePipeline[str]):
 
 
 class BinaryPipeline(BasePipeline[bytes]):
-    dtype = bytes
+    dtypes = (bytes,)
     jtypes = lambda: (jpype.JByte, jpype.JArray(jpype.JByte), jpype.java.sql.Blob)
 
     @override
@@ -168,7 +172,7 @@ class BinaryPipeline(BasePipeline[bytes]):
 
 
 class IntPipeline(BasePipeline[int]):
-    dtype = int
+    dtypes = (int,)
     jtypes = (jpype.JInt, jpype.JLong, jpype.JShort)
 
     @override
@@ -181,7 +185,7 @@ class IntPipeline(BasePipeline[int]):
 
 
 class FloatPipeline(BasePipeline[float]):
-    dtype = float
+    dtypes = (float,)
     jtypes = (jpype.JFloat, jpype.JDouble)
 
     @override
@@ -194,7 +198,7 @@ class FloatPipeline(BasePipeline[float]):
 
 
 class DatePipeline(BasePipeline[date]):
-    dtype = date
+    dtypes = (date,)
     jtypes = lambda: (jpype.java.sql.Date,)
 
     @override
@@ -211,7 +215,7 @@ class DatePipeline(BasePipeline[date]):
 
 
 class TimePipeline(BasePipeline[time]):
-    dtype = time
+    dtypes = (time,)
     jtypes = lambda: (jpype.java.sql.Time,)
 
     @override
@@ -228,7 +232,7 @@ class TimePipeline(BasePipeline[time]):
 
 
 class DatetimePipeline(BasePipeline[datetime]):
-    dtype = datetime
+    dtypes = (datetime,)
     jtypes = lambda: (jpype.java.sql.Timestamp,)
 
     @override
@@ -245,7 +249,7 @@ class DatetimePipeline(BasePipeline[datetime]):
 
 
 class DecimalPipeline(BasePipeline[Decimal]):
-    dtype = Decimal
+    dtypes = (Decimal,)
     jtypes = lambda: (jpype.java.math.BigDecimal,)
 
     @override

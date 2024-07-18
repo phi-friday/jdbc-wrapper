@@ -4,11 +4,17 @@ from datetime import date, datetime, time
 from decimal import Decimal as _Decimal
 from typing import TYPE_CHECKING, Any, Generic, cast
 
+import jpype
 from jpype import dbapi2 as jpype_dbapi2
 from jpype.dbapi2 import JDBCType
 from typing_extensions import TypeAlias, TypeVar, override
 
 from jdbc_wrapper.utils import wrap_errors
+
+try:
+    from sqlalchemy import quoted_name
+except ImportError:
+    quoted_name = str
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -133,6 +139,14 @@ class WrappedJDBCType(Generic[_J, _T]):
         return self._jdbc_type._code  # noqa: SLF001
 
     @property
+    def getter(self) -> str | None:
+        return self._jdbc_type._getter  # noqa: SLF001
+
+    @property
+    def setter(self) -> str | None:
+        return self._jdbc_type._setter  # noqa: SLF001
+
+    @property
     def pipeline(self) -> TypePipeline[_T]:
         from jdbc_wrapper.pipeline import get_type_pipeline
 
@@ -213,6 +227,11 @@ Binary_stream = WrappedJDBCType(jpype_dbapi2.BINARY_STREAM, bytes)
 Character_stream = WrappedJDBCType(jpype_dbapi2.CHARACTER_STREAM, str)
 Ncharacter_stream = WrappedJDBCType(jpype_dbapi2.NCHARACTER_STREAM, str)
 Url = WrappedJDBCType(jpype_dbapi2.URL, str)
+# sqlalchemy
+_QuotedName = JDBCType(
+    "quoted_name", String.type_code, getter=String.getter, setter=String.setter
+)
+QuotedName = WrappedJDBCType(_QuotedName, quoted_name)
 ### declare:: end
 
 
@@ -231,3 +250,15 @@ def find_type_code(description: Description | int | str | None) -> int | None:
 
 def get_wrapped_type(jdbc_type: JDBCType) -> WrappedJDBCType[JDBCType, Any]:
     return _registry[jdbc_type]
+
+
+def _init_types() -> None:
+    try:
+        import sqlalchemy as sa
+    except ImportError:
+        return
+
+    jpype_dbapi2._default_setters[sa.quoted_name] = _QuotedName  # noqa: SLF001
+
+
+jpype._jinit.registerJVMInitializer(_init_types)  # noqa: SLF001
