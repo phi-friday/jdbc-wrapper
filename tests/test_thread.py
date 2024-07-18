@@ -42,7 +42,7 @@ def test_thread_concurrency(sync_engine, url):
     end = time.perf_counter()
     diff = end - start
 
-    assert diff < 2  # noqa: PLR2004
+    assert diff < _CONCURRENCY / 2
 
 
 @pytest.mark.anyio()
@@ -83,4 +83,4 @@ async def test_thread_concurrency_async(async_engine, url):
     end = time.perf_counter()
     diff = end - start
 
-    assert diff < 2  # noqa: PLR2004
+    assert diff < _CONCURRENCY / 2
