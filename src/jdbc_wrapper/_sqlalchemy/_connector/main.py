@@ -33,8 +33,7 @@ from jdbc_wrapper.exceptions import OperationalError
 from jdbc_wrapper.utils_async import await_ as jdbc_await
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
-    from re import Pattern
+    from collections.abc import Mapping
 
     from sqlalchemy.engine import ConnectArgsType
     from sqlalchemy.engine.url import URL
@@ -93,7 +92,6 @@ class JDBCConnector(DefaultConnector, metaclass=JDBCConnectorMeta):
         bind_typing=BindTyping.NONE,
     )
     jdbc_dsn_prefix: tuple[str, Unpack[tuple[str, ...]]]
-    jdbc_dsn_convertor: Mapping[str | Pattern[str], str] | Callable[[str], str]
     default_paramstyle = PARAM_STYLE
 
     @classmethod

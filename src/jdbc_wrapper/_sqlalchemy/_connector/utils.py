@@ -37,7 +37,6 @@ def dsn_to_url(
 
     dsn_prefix = "".join(connector.jdbc_dsn_prefix)
     url_parts = dsn.removeprefix(dsn_prefix)
-    url_parts = resolve_dsn_convertor(url_parts, connector.jdbc_dsn_convertor)
 
     url = connector.name + "+" + connector.driver + "://" + url_parts
     return make_url(url)
