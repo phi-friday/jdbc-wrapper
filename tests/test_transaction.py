@@ -31,7 +31,7 @@ class Table(Base, kw_only=True):
     name: Mapped[str]
     float: Mapped[float]
     decimal: Mapped[Decimal] = mapped_column(sa.Numeric(precision=10, scale=2))
-    datetime: Mapped[datetime_class] = mapped_column(sa.DateTime(timezone=True))
+    datetime: Mapped[datetime_class] = mapped_column(sa.DateTime(timezone=False))
     boolean: Mapped[bool]
 
 
@@ -104,6 +104,54 @@ def test_commit(sync_engine):
     assert new.boolean is maybe.boolean
 
 
+def test_autocommit(sync_raw_connection, sync_engine, sync_session):
+    new = Table(
+        name="test",
+        float=1.0,
+        decimal=Decimal("1.1"),
+        datetime=datetime_class.now(timezone.utc).replace(tzinfo=None),
+        boolean=True,
+    )
+
+    param = {
+        "name": new.name,
+        "float": new.float,
+        "decimal": new.decimal,
+        "datetime": new.datetime,
+        "boolean": new.boolean,
+    }
+    insert_stmt = str(
+        sa.insert(Table)
+        .values(param)
+        .compile(sync_engine, compile_kwargs={"literal_binds": True})
+    )
+    select_stmt = (
+        sa.select(Table)
+        .with_only_columns(
+            Table.name, Table.float, Table.decimal, Table.datetime, Table.boolean
+        )
+        .where(
+            Table.name == sa.bindparam("name", type_=sa.String()),
+            Table.float == sa.bindparam("float", type_=sa.Float()),
+            Table.decimal == sa.bindparam("decimal", type_=sa.Numeric()),
+            Table.datetime
+            == sa.bindparam("datetime", type_=sa.DateTime(timezone=False)),
+            Table.boolean == sa.bindparam("boolean", type_=sa.Boolean()),
+        )
+        .order_by(Table.datetime.desc())
+    )
+
+    sync_raw_connection.autocommit = True
+    assert sync_raw_connection.autocommit is True
+    with sync_raw_connection.cursor() as cursor:
+        cursor.execute(insert_stmt)
+        cursor.fetchall()
+
+    fetch = sync_session.execute(select_stmt, param)
+    row = fetch.one().t
+    assert row == (new.name, new.float, new.decimal, new.datetime, new.boolean)
+
+
 @pytest.mark.anyio()
 async def test_rollback_async(async_session):
     new = Table(
@@ -167,3 +215,52 @@ async def test_commit_async(async_engine):
     assert new.decimal == maybe.decimal
     assert new.datetime == maybe.datetime
     assert new.boolean is maybe.boolean
+
+
+@pytest.mark.anyio()
+async def test_autocommit_async(async_raw_connection, async_engine, async_session):
+    new = Table(
+        name="test",
+        float=1.0,
+        decimal=Decimal("1.1"),
+        datetime=datetime_class.now(timezone.utc).replace(tzinfo=None),
+        boolean=True,
+    )
+
+    param = {
+        "name": new.name,
+        "float": new.float,
+        "decimal": new.decimal,
+        "datetime": new.datetime,
+        "boolean": new.boolean,
+    }
+    insert_stmt = str(
+        sa.insert(Table)
+        .values(param)
+        .compile(async_engine, compile_kwargs={"literal_binds": True})
+    )
+    select_stmt = (
+        sa.select(Table)
+        .with_only_columns(
+            Table.name, Table.float, Table.decimal, Table.datetime, Table.boolean
+        )
+        .where(
+            Table.name == sa.bindparam("name", type_=sa.String()),
+            Table.float == sa.bindparam("float", type_=sa.Float()),
+            Table.decimal == sa.bindparam("decimal", type_=sa.Numeric()),
+            Table.datetime
+            == sa.bindparam("datetime", type_=sa.DateTime(timezone=False)),
+            Table.boolean == sa.bindparam("boolean", type_=sa.Boolean()),
+        )
+        .order_by(Table.datetime.desc())
+    )
+
+    async_raw_connection.autocommit = True
+    assert async_raw_connection.autocommit is True
+    async with async_raw_connection.cursor() as cursor:
+        await cursor.execute(insert_stmt)
+        await cursor.fetchall()
+
+    fetch = await async_session.execute(select_stmt, param)
+    row = fetch.one().t
+    assert row == (new.name, new.float, new.decimal, new.datetime, new.boolean)
