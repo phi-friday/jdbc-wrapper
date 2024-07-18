@@ -61,7 +61,7 @@ allow-direct-references = true
 packages = ["src/jdbc_wrapper"]
 
 [tool.pytest.ini_options]
-addopts = "--cov=src/jdbc_wrapper --cov-report html --cov-report=xml"
+addopts = "-n auto --cov=src/jdbc_wrapper --cov-report html --cov-report=xml"
 testpaths = ["tests"]
 
 [tool.coverage.run]
