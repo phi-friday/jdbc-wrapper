@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.dialects.sqlite.base import SQLiteDialect
+from sqlalchemy.engine.url import URL
 from sqlalchemy.util import memoized_property
 from typing_extensions import override
 
@@ -16,15 +17,16 @@ from jdbc_wrapper._sqlalchemy.connector import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from types import ModuleType
 
-    from sqlalchemy.engine import ConnectArgsType, Connection
+    from sqlalchemy.engine import Connection
     from sqlalchemy.engine.url import URL
 
 
 class SQJDBCDialect(JDBCConnector, SQLiteDialect):
     settings = ConnectorSettings(
-        jdbc_dsn_prefix="jdbc:sqlite:",
+        jdbc_dsn_prefix=("jdbc:sqlite:",),
         name="sqlite",
         driver="jdbc_wrapper",
         inherit=SQLiteDialect,
@@ -48,17 +50,17 @@ class SQJDBCDialect(JDBCConnector, SQLiteDialect):
     def initialize(self, connection: Connection) -> None:
         SQLiteDialect.initialize(self, connection)
 
+    @classmethod
     @override
-    def create_connect_args(self, url: URL) -> ConnectArgsType:
-        dsn = self.jdbc_dsn_prefix
+    def parse_dsn_parts(cls, url: URL) -> tuple[str, Mapping[str, Any]]:
+        dsn = "".join(cls.jdbc_dsn_prefix)
         if url.database:
             database = Path(url.database).resolve()
             dsn += str(database)
         else:
             dsn += ":memory:"
 
-        args = self._create_connect_args(dsn=dsn, query=url.query)
-        return (), args
+        return dsn, url.query
 
     @classmethod
     @override
@@ -68,7 +70,7 @@ class SQJDBCDialect(JDBCConnector, SQLiteDialect):
 
 class AsyncSQJDBCDialect(SQJDBCDialect):
     settings = ConnectorSettings(
-        jdbc_dsn_prefix="jdbc:sqlite:",
+        jdbc_dsn_prefix=SQJDBCDialect.jdbc_dsn_prefix,
         name="sqlite",
         driver="jdbc_async_wrapper",
         inherit=SQJDBCDialect,

@@ -3,12 +3,12 @@ from __future__ import annotations
 from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import make_url, pool
+from sqlalchemy import pool
 from sqlalchemy import util as sa_util
 from sqlalchemy.connectors import Connector
 from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.engine.interfaces import BindTyping, DBAPIConnection, IsolationLevel
-from typing_extensions import override
+from typing_extensions import Unpack, override
 
 from jdbc_wrapper._sqlalchemy._connector.config import (
     ConnectorSettings,
@@ -18,6 +18,7 @@ from jdbc_wrapper._sqlalchemy._connector.connection_async import (
     AsyncConnection,
     AsyncConnectionFallback,
 )
+from jdbc_wrapper._sqlalchemy._connector.utils import dsn_to_url
 from jdbc_wrapper._sqlalchemy._connector.utils_async import await_fallback
 from jdbc_wrapper.abc import ConnectionABC
 from jdbc_wrapper.connection import connect as sync_connect
@@ -32,8 +33,10 @@ from jdbc_wrapper.exceptions import OperationalError
 from jdbc_wrapper.utils_async import await_ as jdbc_await
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
+    from re import Pattern
 
+    from sqlalchemy.engine import ConnectArgsType
     from sqlalchemy.engine.url import URL
 
     from jdbc_wrapper.abc import ConnectionABC, CursorABC
@@ -80,7 +83,7 @@ class DefaultConnector(DefaultDialect, Connector):  # pyright: ignore[reportInco
 class JDBCConnector(DefaultConnector, metaclass=JDBCConnectorMeta):
     _jdbc_wrapper_dialect_settings: ConnectorSettings
     settings = ConnectorSettings(
-        jdbc_dsn_prefix="jdbc://",
+        jdbc_dsn_prefix=("jdbc:", "//"),
         name="jdbc_wrapper_base_connector",
         driver="jdbc_wrapper_base_driver",
         inherit=DefaultConnector,
@@ -89,7 +92,8 @@ class JDBCConnector(DefaultConnector, metaclass=JDBCConnectorMeta):
         supports_native_decimal=True,
         bind_typing=BindTyping.NONE,
     )
-    jdbc_dsn_prefix: str
+    jdbc_dsn_prefix: tuple[str, Unpack[tuple[str, ...]]]
+    jdbc_dsn_convertor: Mapping[str | Pattern[str], str] | Callable[[str], str]
     default_paramstyle = PARAM_STYLE
 
     @classmethod
@@ -141,21 +145,27 @@ class JDBCConnector(DefaultConnector, metaclass=JDBCConnectorMeta):
             dbapi_connection.autocommit = False
             super().set_isolation_level(dbapi_connection, level)
 
+    @classmethod
+    def parse_dsn_parts(cls, url: URL) -> tuple[str, Mapping[str, Any]]:
+        raise NotImplementedError
+
+    @override
+    def create_connect_args(self, url: URL) -> ConnectArgsType:  # pyright: ignore[reportIncompatibleMethodOverride]
+        args = self._create_connect_args(url, {})
+        return (), args
+
     def _create_connect_args(
-        self, dsn: str, query: Mapping[str, Any]
+        self, url: URL, query: Mapping[str, Any]
     ) -> dict[str, Any]:
         driver_args = dict(query)
         if JDBC_QUERY_DSN in driver_args:
             dsn = driver_args.pop(JDBC_QUERY_DSN)
-            dsn = (
-                self.dialect_description
-                + "://"
-                + dsn.removeprefix(self.jdbc_dsn_prefix).removeprefix("://")
-            )
-            url = make_url(dsn)
+            url = dsn_to_url(dsn, self)
             url = url.set(query=driver_args | dict(url.query))
-            return self.create_connect_args(url)[1]
+            return self._create_connect_args(url, {})
 
+        dsn, dsn_parts = self.parse_dsn_parts(url)
+        driver_args = dict(dsn_parts) | driver_args
         try:
             driver: str = driver_args.pop(JDBC_QUERY_DRIVER)
         except KeyError as exc:

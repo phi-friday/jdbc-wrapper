@@ -4,8 +4,11 @@ import sys
 from dataclasses import MISSING, asdict, dataclass, fields
 from typing import TYPE_CHECKING, Any
 
+from typing_extensions import Unpack
+
 if TYPE_CHECKING:
-    from collections.abc import Mapping, MutableMapping
+    from collections.abc import Callable, Mapping, MutableMapping
+    from re import Pattern
 
     from sqlalchemy.engine.interfaces import BindTyping, Dialect
     from sqlalchemy.sql.compiler import InsertmanyvaluesSentinelOpts
@@ -29,8 +32,6 @@ class ConnectorSettings:
         `:ref:sqlalchemy.engine.default.DefaultDialect`
     """
 
-    jdbc_dsn_prefix: str
-
     name: str
     """identifying name for the dialect from a DBAPI-neutral point of view
     (i.e. 'sqlite')
@@ -39,6 +40,8 @@ class ConnectorSettings:
     driver: str
     """identifying name for the dialect's DBAPI"""
 
+    jdbc_dsn_prefix: tuple[str, Unpack[tuple[str, ...]]]
+    jdbc_dsn_convertor: Mapping[str | Pattern[str], str] | Callable[[str], str] = unset
     inherit: type[Dialect] | None = None
 
     supports_alter: bool = unset
@@ -341,6 +344,9 @@ class JDBCConnectorMeta(type):
     ) -> Any:
         settings: ConnectorSettings = namespace.pop("settings")
         as_dict_settings = asdict(settings)
+        rename = as_dict_settings.pop("jdbc_dsn_convertor", None)
+        if rename is unset or rename is None:
+            as_dict_settings["jdbc_dsn_convertor"] = {}
         as_dict_settings.pop("inherit", None)
         namespace.update(
             (key, value)

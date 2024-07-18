@@ -2,7 +2,7 @@
 # pyright: reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine.url import URL
@@ -11,13 +11,15 @@ from typing_extensions import override
 from jdbc_wrapper._sqlalchemy.connector import ConnectorSettings, JDBCConnector
 
 if TYPE_CHECKING:
-    from sqlalchemy.engine import ConnectArgsType, Connection
+    from collections.abc import Mapping
+
+    from sqlalchemy.engine import Connection
     from sqlalchemy.engine.url import URL
 
 
 class PGJDBCDialect(JDBCConnector, PGDialect):
     settings = ConnectorSettings(
-        jdbc_dsn_prefix="jdbc:postgresql://",
+        jdbc_dsn_prefix=("jdbc:postgresql:", "//"),
         name="postgresql",
         driver="jdbc_wrapper",
         inherit=PGDialect,
@@ -28,9 +30,10 @@ class PGJDBCDialect(JDBCConnector, PGDialect):
     def initialize(self, connection: Connection) -> None:
         PGDialect.initialize(self, connection)
 
+    @classmethod
     @override
-    def create_connect_args(self, url: URL) -> ConnectArgsType:
-        dsn = self.jdbc_dsn_prefix
+    def parse_dsn_parts(cls, url: URL) -> tuple[str, Mapping[str, Any]]:
+        dsn = "".join(cls.jdbc_dsn_prefix)
         if url.host:
             dsn += url.host
         if url.port:
@@ -46,8 +49,7 @@ class PGJDBCDialect(JDBCConnector, PGDialect):
         if url.password:
             query["password"] = url.password
 
-        args = self._create_connect_args(dsn=dsn, query=query)
-        return (), args
+        return dsn, query
 
     @classmethod
     @override
@@ -57,7 +59,7 @@ class PGJDBCDialect(JDBCConnector, PGDialect):
 
 class AsyncPGJDBCDialect(PGJDBCDialect):
     settings = ConnectorSettings(
-        jdbc_dsn_prefix="jdbc:postgresql://",
+        jdbc_dsn_prefix=PGJDBCDialect.jdbc_dsn_prefix,
         name="postgresql",
         driver="jdbc_async_wrapper",
         inherit=PGJDBCDialect,
