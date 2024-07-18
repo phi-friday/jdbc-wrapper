@@ -35,11 +35,9 @@ def test_thread_concurrency(sync_engine, url):
             fetch = conn.execute(sa.text("SELECT pg_sleep(1)"))
             fetch.fetchall()
 
-    size = _CONCURRENCY
-
     start = time.perf_counter()
-    with ThreadPoolExecutor(size) as pool:
-        futures = [pool.submit(do_sleep) for _ in range(size)]
+    with ThreadPoolExecutor(_CONCURRENCY) as pool:
+        futures = [pool.submit(do_sleep) for _ in range(_CONCURRENCY)]
         futures = wait(futures)
     end = time.perf_counter()
     diff = end - start
@@ -78,11 +76,9 @@ async def test_thread_concurrency_async(async_engine, url):
     def do_sleep():
         return asyncio.run(_do_sleep())
 
-    size = _CONCURRENCY
-
     start = time.perf_counter()
-    with ThreadPoolExecutor(size) as pool:
-        futures = [pool.submit(do_sleep) for _ in range(size)]
+    with ThreadPoolExecutor(_CONCURRENCY) as pool:
+        futures = [pool.submit(do_sleep) for _ in range(_CONCURRENCY)]
         futures = wait(futures)
     end = time.perf_counter()
     diff = end - start
