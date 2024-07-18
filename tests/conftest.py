@@ -166,6 +166,18 @@ def url(
 
 
 @pytest.fixture(scope="session")
+def jdbc_driver(url: sa.engine.url.URL) -> str:
+    driver = url.query["jdbc_driver"]
+    assert isinstance(driver, str)
+    return driver
+
+
+@pytest.fixture(scope="session")
+def jdbc_modules(url: sa.engine.url.URL) -> tuple[str, ...] | str:
+    return url.query["jdbc_modules"]
+
+
+@pytest.fixture(scope="session")
 def create_sync_engine(
     url: sa.engine.url.URL,
 ) -> Generator[sa.engine.Engine, None, None]:
