@@ -3,38 +3,32 @@
 from __future__ import annotations
 
 import pytest
-import sqlalchemy as sa
+
+import jdbc_wrapper
 
 
-def test_ping1(sync_session):
-    stmt = sa.text("select 1")
-    fetch = sync_session.execute(stmt)
-    value = fetch.scalar_one()
-    assert isinstance(value, int)
-    assert value == 1
+def test_connect_sync(jdbc_dsn, jdbc_driver, jdbc_modules, jdbc_driver_args):
+    connection = jdbc_wrapper.connect(
+        jdbc_dsn, jdbc_driver, jdbc_modules, jdbc_driver_args, is_async=False
+    )
+    assert isinstance(connection, jdbc_wrapper.Connection)
+    with connection:
+        with connection.cursor() as cursor:
+            cursor.execute("select 1")
+            row = cursor.fetchone()
 
-
-def test_ping2(sync_session):
-    stmt = sa.text("select 1")
-    fetch = sync_session.execute(stmt)
-    value = fetch.scalar_one()
-    assert isinstance(value, int)
-    assert value == 1
-
-
-@pytest.mark.anyio()
-async def test_ping3(async_session):
-    stmt = sa.text("select 1")
-    fetch = await async_session.execute(stmt)
-    value = fetch.scalar_one()
-    assert isinstance(value, int)
-    assert value == 1
+    assert row == (1,)
 
 
 @pytest.mark.anyio()
-async def test_ping4(async_session):
-    stmt = sa.text("select 1")
-    fetch = await async_session.execute(stmt)
-    value = fetch.scalar_one()
-    assert isinstance(value, int)
-    assert value == 1
+async def test_connect_async(jdbc_dsn, jdbc_driver, jdbc_modules, jdbc_driver_args):
+    connection = jdbc_wrapper.connect(
+        jdbc_dsn, jdbc_driver, jdbc_modules, jdbc_driver_args, is_async=True
+    )
+    assert isinstance(connection, jdbc_wrapper.AsyncConnection)
+    async with connection:
+        async with connection.cursor() as cursor:
+            await cursor.execute("select 1")
+            row = await cursor.fetchone()
+
+    assert row == (1,)

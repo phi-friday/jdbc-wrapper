@@ -7,6 +7,7 @@ import shutil
 import uuid
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
+from typing import Any
 
 import filelock
 import pytest
@@ -16,8 +17,10 @@ from sqlalchemy.ext.asyncio import create_async_engine as sa_create_async_engine
 from sqlalchemy.orm import Session
 
 import jdbc_wrapper
+from jdbc_wrapper import const as jdbc_wrapper_const
 from jdbc_wrapper._loader import find_loader
 from jdbc_wrapper._loader import load as load_jdbc_modules
+from jdbc_wrapper._sqlalchemy._connector.utils import url_to_dsn
 
 # isort: off
 import anyio  # noqa: F401 # pyright: ignore[reportUnusedImport]
@@ -175,6 +178,27 @@ def jdbc_driver(url: sa.engine.url.URL) -> str:
 @pytest.fixture(scope="session")
 def jdbc_modules(url: sa.engine.url.URL) -> tuple[str, ...] | str:
     return url.query["jdbc_modules"]
+
+
+@pytest.fixture(scope="session")
+def jdbc_dsn_parts(url: sa.engine.url.URL) -> tuple[str, dict[str, Any]]:
+    dsn, query = url_to_dsn(url)
+    return dsn, dict(query)
+
+
+@pytest.fixture(scope="session")
+def jdbc_dsn(jdbc_dsn_parts: tuple[str, dict[str, Any]]) -> str:
+    return jdbc_dsn_parts[0]
+
+
+@pytest.fixture(scope="session")
+def jdbc_driver_args(jdbc_dsn_parts: tuple[str, dict[str, Any]]) -> dict[str, Any]:
+    ignore = {
+        jdbc_wrapper_const.JDBC_QUERY_DRIVER,
+        jdbc_wrapper_const.JDBC_QUERY_MODULES,
+        jdbc_wrapper_const.JDBC_QUERY_DRIVER,
+    }
+    return {key: value for key, value in jdbc_dsn_parts[1].items() if key not in ignore}
 
 
 @pytest.fixture(scope="session")
