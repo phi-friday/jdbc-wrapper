@@ -3,11 +3,6 @@ name = "jdbc-wrapper"
 version = "0.1.0"
 description = "Add your description here"
 authors = [{ name = "phi", email = "phi.friday@gmail.com" }]
-dependencies = [
-    "jpype1>=1.2.1",
-    "typing-extensions>=4.4.0",
-    "tomli>=1.1.0 ; python_version < '3.11'",
-]
 license = { file = "LICENSE" }
 readme = "README.md"
 classifiers = [
@@ -21,6 +16,11 @@ classifiers = [
     "Framework :: AsyncIO",
 ]
 requires-python = ">= 3.9"
+dependencies = [
+    "jpype1>=1.2.1",
+    "typing-extensions>=4.4.0",
+    "tomli>=1.1.0 ; python_version < '3.11'",
+]
 
 [project.optional-dependencies]
 asyncio = ["greenlet"]
@@ -36,10 +36,6 @@ test = [
     "pytest-cov>=5.0.0",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [tool.rye]
 managed = true
 dev-dependencies = [
@@ -48,6 +44,15 @@ dev-dependencies = [
     "pre-commit>=3.7.1",
     "jdbc-wrapper[typing,test,asyncio,sqlalchemy]",
 ]
+[tool.rye.scripts]
+lint = { chain = ["lint:check", "lint:format"] }
+"lint:check" = "ruff check src tests --fix"
+"lint:format" = "ruff format src tests"
+check = "pre-commit run --all-files --show-diff-on-failure"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.hatch.metadata]
 allow-direct-references = true
