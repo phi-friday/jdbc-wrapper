@@ -12,6 +12,16 @@ import sqlalchemy as sa
 _CONCURRENCY = 10
 
 
+def _get_sleep_command(url: sa.engine.url.URL) -> tuple[str, str]:
+    backend = url.get_backend_name().lower()
+    if backend == "postgresql":
+        return "SELECT pg_sleep(1)", ""
+    if backend == "mssql":
+        return "WAITFOR DELAY '00:00:01'", ""
+
+    return "", "This test is only for PostgreSQL and MSSQL"
+
+
 def test_thread_safe_connection(sync_raw_connection):
     def select_one(value: int):
         with sync_raw_connection.cursor() as cursor:
@@ -27,12 +37,15 @@ def test_thread_safe_connection(sync_raw_connection):
 
 
 def test_thread_concurrency(sync_engine, url):
-    if url.get_backend_name().lower() != "postgresql":
-        pytest.skip("This test is only for PostgreSQL")
+    sleep_command, skip_message = _get_sleep_command(url)
+    if skip_message:
+        pytest.skip(skip_message)
+
+    sleep_stmt = sa.text(sleep_command)
 
     def do_sleep():
         with sync_engine.connect() as conn:
-            fetch = conn.execute(sa.text("SELECT pg_sleep(1)"))
+            fetch = conn.execute(sleep_stmt)
             fetch.fetchall()
 
     start = time.perf_counter()
@@ -66,12 +79,15 @@ async def test_thread_safe_connection_async(async_raw_connection):
 
 @pytest.mark.anyio()
 async def test_thread_concurrency_async(async_engine, url):
-    if url.get_backend_name().lower() != "postgresql":
-        pytest.skip("This test is only for PostgreSQL")
+    sleep_command, skip_message = _get_sleep_command(url)
+    if skip_message:
+        pytest.skip(skip_message)
+
+    sleep_stmt = sa.text(sleep_command)
 
     async def _do_sleep():
         async with async_engine.connect() as conn:
-            await conn.execute(sa.text("SELECT pg_sleep(1)"))
+            await conn.execute(sleep_stmt)
 
     def do_sleep():
         return asyncio.run(_do_sleep())
