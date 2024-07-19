@@ -16,7 +16,7 @@ from jdbc_wrapper.abc import TypePipeline
 
 try:
     from sqlalchemy import quoted_name
-except ImportError:
+except ImportError:  # pragma: no cover
     quoted_name = str
 
 __all__ = []

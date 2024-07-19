@@ -13,7 +13,7 @@ from jdbc_wrapper.utils import wrap_errors
 
 try:
     from sqlalchemy import quoted_name
-except ImportError:
+except ImportError:  # pragma: no cover
     quoted_name = str
 
 if TYPE_CHECKING:
@@ -255,7 +255,7 @@ def get_wrapped_type(jdbc_type: JDBCType) -> WrappedJDBCType[JDBCType, Any]:
 def _init_types() -> None:
     try:
         import sqlalchemy as sa
-    except ImportError:
+    except ImportError:  # pragma: no cover
         return
 
     jpype_dbapi2._default_setters[sa.quoted_name] = _QuotedName  # noqa: SLF001

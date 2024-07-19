@@ -69,6 +69,7 @@ omit = [
     "tests/**/*",
     "src/jdbc_wrapper/_loader/**/*.py",
     "src/jdbc_wrapper/**/utils*.py",
+    "src/jdbc_wrapper/_sqlalchemy/**/*_async.py",
 ]
 
 [tool.coverage.report]

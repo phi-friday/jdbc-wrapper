@@ -64,12 +64,14 @@ class DbapiModule(ModuleType):
                 connection = async_connect(*args, **kwargs)
             else:
                 connection = creator_fn(*args, **kwargs)
-                if async_fallback:
+                # deprecated in SQLAlchemy 2.1
+                if async_fallback:  # pragma: no cover
                     connection = await_fallback(connection)
                 else:
                     connection = jdbc_await(connection)
 
-            if async_fallback:
+            # deprecated in SQLAlchemy 2.1
+            if async_fallback:  # pragma: no cover
                 return AsyncConnectionFallback(self, connection)
             return AsyncConnection(self, connection)
         return sync_connect(*args, **kwargs)
@@ -113,7 +115,8 @@ class JDBCConnector(DefaultConnector, metaclass=JDBCConnectorMeta):
     def get_pool_class(cls, url: URL) -> type[pool.Pool]:
         if cls.is_async:
             async_fallback = url.query.get("async_fallback", False)
-            if sa_util.asbool(async_fallback):
+            # deprecated in SQLAlchemy 2.1
+            if sa_util.asbool(async_fallback):  # pragma: no cover
                 return pool.FallbackAsyncAdaptedQueuePool
             return getattr(cls, "poolclass", pool.AsyncAdaptedQueuePool)
         return getattr(cls, "poolclass", pool.QueuePool)

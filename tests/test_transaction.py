@@ -118,7 +118,7 @@ def test_autocommit(sync_raw_connection, sync_engine, sync_session, model):
         cursor.fetchall()
 
     fetch = sync_session.execute(select_stmt, param)
-    row = fetch.one().t
+    row = fetch.one()
     assert row == (new.name, new.float, new.decimal, new.datetime, new.boolean)
 
 
@@ -234,5 +234,5 @@ async def test_autocommit_async(
         await cursor.fetchall()
 
     fetch = await async_session.execute(select_stmt, param)
-    row = fetch.one().t
+    row = fetch.one()
     assert row == (new.name, new.float, new.decimal, new.datetime, new.boolean)
