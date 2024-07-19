@@ -124,6 +124,40 @@ def test_autocommit(sync_raw_connection, sync_engine, sync_session, model):
     assert row == (new.name, new.float, new.decimal, new.datetime, new.boolean)
 
 
+def test_fetchone(sync_cursor, model, records):
+    select_stmt = sa.select(model).where(model.id == records[0].id)
+    sync_cursor.execute(select_stmt)
+    row = sync_cursor.fetchone()
+    assert row is not None
+    assert isinstance(row, tuple)
+    assert row == (
+        records[0].id,
+        records[0].name,
+        records[0].float,
+        records[0].decimal,
+        records[0].datetime,
+        records[0].boolean,
+    )
+
+
+def test_fetchmany(sync_cursor, model, records):
+    size = (len(records) // 2) or 1
+    select_stmt = sa.select(model).limit(len(records))
+    sync_cursor.execute(select_stmt)
+    rows = sync_cursor.fetchmany(size)
+    assert len(rows) == size
+    assert all(isinstance(x, tuple) for x in rows)
+
+
+def test_fetchall(sync_cursor, model, records):
+    size = len(records)
+    select_stmt = sa.select(model).limit(size)
+    sync_cursor.execute(select_stmt)
+    rows = sync_cursor.fetchall()
+    assert len(rows) == size
+    assert all(isinstance(x, tuple) for x in rows)
+
+
 async def test_rollback_async(async_session, model):
     new = model(
         name="test",
@@ -234,3 +268,37 @@ async def test_autocommit_async(
     fetch = await async_session.execute(select_stmt, param)
     row = fetch.one()
     assert row == (new.name, new.float, new.decimal, new.datetime, new.boolean)
+
+
+async def test_fetchone_async(async_cursor, model, records):
+    select_stmt = sa.select(model).where(model.id == records[0].id)
+    await async_cursor.execute(select_stmt)
+    row = await async_cursor.fetchone()
+    assert row is not None
+    assert isinstance(row, tuple)
+    assert row == (
+        records[0].id,
+        records[0].name,
+        records[0].float,
+        records[0].decimal,
+        records[0].datetime,
+        records[0].boolean,
+    )
+
+
+async def test_fetchmany_async(async_cursor, model, records):
+    size = (len(records) // 2) or 1
+    select_stmt = sa.select(model).limit(len(records))
+    await async_cursor.execute(select_stmt)
+    rows = await async_cursor.fetchmany(size)
+    assert len(rows) == size
+    assert all(isinstance(x, tuple) for x in rows)
+
+
+async def test_fetchall_async(async_cursor, model, records):
+    size = len(records)
+    select_stmt = sa.select(model).limit(size)
+    await async_cursor.execute(select_stmt)
+    rows = await async_cursor.fetchall()
+    assert len(rows) == size
+    assert all(isinstance(x, tuple) for x in rows)
