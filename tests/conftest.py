@@ -133,6 +133,10 @@ def temp_dir(create_temp_dir: Path) -> Path:
 
 @pytest.fixture(scope="session")
 def url_without_query(temp_dir: Path) -> sa.engine.url.URL:
+    url = os.getenv("DATABASE_URL", "")
+    if url:
+        return sa.make_url(url)
+
     backend = os.getenv("DATABASE_BACKEND", "")
     username = os.getenv("DATABASE_USERNAME", "")
     password = os.getenv("DATABASE_PASSWORD", "")
