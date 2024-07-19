@@ -251,7 +251,7 @@ def model(table) -> type[Table]:  # type: ignore # noqa: ARG001
     return Table
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="session")
 def records(sync_engine: sa.engine.Engine, model: type[Table]) -> list[Table]:
     records = [
         model(
