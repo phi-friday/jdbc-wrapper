@@ -95,7 +95,7 @@ class Connection(ConnectionABC[Cursor[Any]]):
 
     @property
     @override
-    def dsn(self) -> str:
+    def _dsn(self) -> str:
         return str(self._jpype_connection._jcx.getURL())  # noqa: SLF001
 
 

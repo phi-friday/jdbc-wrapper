@@ -216,7 +216,7 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
             return operation
 
         try:
-            return statement_to_query(operation, self.connection.dsn)
+            return statement_to_query(operation, self.connection._dsn)  # noqa: SLF001
         except TypeError as exc:
             error_msg = f"Failed to convert `{operation!s}` to query"
             raise TypeError(error_msg) from exc

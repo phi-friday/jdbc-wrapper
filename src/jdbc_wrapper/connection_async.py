@@ -91,8 +91,8 @@ class AsyncConnection(AsyncConnectionABC[AsyncCursor[Any]]):
 
     @property
     @override
-    def dsn(self) -> str:
-        return self._sync_connection.dsn
+    def _dsn(self) -> str:
+        return self._sync_connection._dsn  # noqa: SLF001
 
     async def _safe_run_in_thread(
         self, func: Callable[..., _T], *args: Any, **kwargs: Any
