@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 
 import jdbc_wrapper
 
+pytestmark = pytest.mark.anyio
+
 
 @pytest.fixture(scope="module", autouse=True)
 def records(sync_engine, model):
@@ -98,30 +100,25 @@ def test_description(sync_cursor, model):
     assert names == set(model.__table__.columns.keys())
 
 
-@pytest.mark.anyio()
 async def test_autocommit_async(async_raw_connection):
     assert async_raw_connection.autocommit is False
 
 
-@pytest.mark.anyio()
 async def test_is_closed_async(async_raw_connection):
     assert async_raw_connection.is_closed is False
     await async_raw_connection.close()
     assert async_raw_connection.is_closed is True
 
 
-@pytest.mark.anyio()
 async def test_connection_async(async_cursor):
     assert isinstance(async_cursor.connection, jdbc_wrapper.AsyncConnection)
 
 
-@pytest.mark.anyio()
 async def test_thread_id_async(async_cursor):
     thread_id = threading.get_ident()
     assert async_cursor.thread_id == thread_id
 
 
-@pytest.mark.anyio()
 async def test_arraysize_async(async_cursor):
     size = 10
     assert async_cursor.arraysize == 1
@@ -129,7 +126,6 @@ async def test_arraysize_async(async_cursor):
     assert async_cursor.arraysize == size
 
 
-@pytest.mark.anyio()
 async def test_rowcount_async(async_cursor, model, records):
     size = len(records)
     assert async_cursor.rowcount == -1
@@ -147,7 +143,6 @@ async def test_rowcount_async(async_cursor, model, records):
     assert async_cursor.rowcount == size
 
 
-@pytest.mark.anyio()
 async def test_description_async(async_cursor, model):
     assert async_cursor.description is None
     select_stmt = sa.select(model).limit(1)

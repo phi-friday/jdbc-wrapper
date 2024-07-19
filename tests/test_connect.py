@@ -6,6 +6,8 @@ import pytest
 
 import jdbc_wrapper
 
+pytestmark = pytest.mark.anyio
+
 
 def test_connect_sync(jdbc_dsn, jdbc_driver, jdbc_modules, jdbc_driver_args):
     connection = jdbc_wrapper.connect(
@@ -20,7 +22,6 @@ def test_connect_sync(jdbc_dsn, jdbc_driver, jdbc_modules, jdbc_driver_args):
     assert row == (1,)
 
 
-@pytest.mark.anyio()
 async def test_connect_async(jdbc_dsn, jdbc_driver, jdbc_modules, jdbc_driver_args):
     connection = jdbc_wrapper.connect(
         jdbc_dsn, jdbc_driver, jdbc_modules, jdbc_driver_args, is_async=True

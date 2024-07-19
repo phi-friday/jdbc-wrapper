@@ -11,6 +11,8 @@ import sqlalchemy as sa
 
 _CONCURRENCY = 10
 
+pytestmark = pytest.mark.anyio
+
 
 @pytest.fixture(scope="module")
 def sleep_stmt(url: sa.engine.url.URL) -> sa.TextClause:
@@ -53,7 +55,6 @@ def test_thread_concurrency(sync_engine, sleep_stmt):
     assert diff < _CONCURRENCY / 2
 
 
-@pytest.mark.anyio()
 async def test_thread_safe_connection_async(async_raw_connection):
     async def _select_one(value: int):
         async with async_raw_connection.cursor() as cursor:
@@ -72,7 +73,6 @@ async def test_thread_safe_connection_async(async_raw_connection):
     assert result == set(range(_CONCURRENCY))
 
 
-@pytest.mark.anyio()
 async def test_thread_concurrency_async(async_engine, sleep_stmt):
     async def _do_sleep():
         async with async_engine.connect() as conn:

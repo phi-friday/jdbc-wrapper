@@ -11,6 +11,8 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
+pytestmark = pytest.mark.anyio
+
 
 def test_rollback(sync_session, model):
     new = model(
@@ -122,7 +124,6 @@ def test_autocommit(sync_raw_connection, sync_engine, sync_session, model):
     assert row == (new.name, new.float, new.decimal, new.datetime, new.boolean)
 
 
-@pytest.mark.anyio()
 async def test_rollback_async(async_session, model):
     new = model(
         name="test",
@@ -140,7 +141,6 @@ async def test_rollback_async(async_session, model):
     assert maybe is None
 
 
-@pytest.mark.anyio()
 async def test_no_commit_async(async_engine, model):
     new = model(
         name="test",
@@ -160,7 +160,6 @@ async def test_no_commit_async(async_engine, model):
         assert maybe is None
 
 
-@pytest.mark.anyio()
 async def test_commit_async(async_engine, model):
     new = model(
         name="test",
@@ -187,7 +186,6 @@ async def test_commit_async(async_engine, model):
     assert new.boolean is maybe.boolean
 
 
-@pytest.mark.anyio()
 async def test_autocommit_async(
     async_raw_connection, async_engine, async_session, model
 ):
