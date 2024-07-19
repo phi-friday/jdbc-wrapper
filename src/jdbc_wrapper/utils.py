@@ -299,11 +299,6 @@ def statement_to_query(statement: Any, dsn: str) -> str:
         error_msg = "Statement is not an SQLAlchemy executable."
         raise TypeError(error_msg)
 
-    import sqlalchemy as sa
-
-    sa.text("").compile()
     connector_type = find_connector_type(dsn)
     connector = connector_type()
-    return str(
-        statement.compile(dialect=connector, compile_kwargs={"literal_binds": True})
-    )
+    return str(statement.compile(dialect=connector))

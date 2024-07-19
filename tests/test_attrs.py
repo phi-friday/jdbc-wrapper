@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from functools import reduce
 
 import pytest
 import sqlalchemy as sa
@@ -45,24 +46,38 @@ def test_arraysize(sync_cursor):
 def test_rowcount(sync_cursor, model, records):
     size = len(records)
     assert sync_cursor.rowcount == -1
+
+    params = reduce(
+        lambda x, y: x | y,  # pyright: ignore[reportUnknownLambdaType]
+        (
+            {
+                f"name_{idx}": x.name,
+                f"float_{idx}": x.float + 1,
+                f"decimal_{idx}": x.decimal,
+                f"datetime_{idx}": x.datetime,
+                f"boolean_{idx}": x.boolean,
+            }
+            for idx, x in enumerate(records)
+        ),
+    )
     insert_stmt = sa.insert(model).values([
         {
-            "name": x.name,
-            "float": x.float + 1,
-            "decimal": x.decimal,
-            "datetime": x.datetime,
-            "boolean": x.boolean,
+            "name": sa.bindparam(f"name_{idx}"),
+            "float": sa.bindparam(f"float_{idx}"),
+            "decimal": sa.bindparam(f"decimal_{idx}"),
+            "datetime": sa.bindparam(f"datetime_{idx}"),
+            "boolean": sa.bindparam(f"boolean_{idx}"),
         }
-        for x in records
+        for idx in range(len(records))
     ])
-    sync_cursor.execute(insert_stmt)
+    sync_cursor.execute(insert_stmt, params)
     assert sync_cursor.rowcount == size
 
 
 def test_description(sync_cursor, model):
     assert sync_cursor.description is None
-    select_stmt = sa.select(model).limit(1)
-    sync_cursor.execute(select_stmt)
+    select_stmt = sa.select(model).limit(sa.bindparam("size"))
+    sync_cursor.execute(select_stmt, {"size": 1})
     assert sync_cursor.description is not None
     names = {x[0] for x in sync_cursor.description}
     assert names == set(model.__table__.columns.keys())
@@ -97,24 +112,38 @@ async def test_arraysize_async(async_cursor):
 async def test_rowcount_async(async_cursor, model, records):
     size = len(records)
     assert async_cursor.rowcount == -1
+
+    params = reduce(
+        lambda x, y: x | y,  # pyright: ignore[reportUnknownLambdaType]
+        (
+            {
+                f"name_{idx}": x.name,
+                f"float_{idx}": x.float + 1,
+                f"decimal_{idx}": x.decimal,
+                f"datetime_{idx}": x.datetime,
+                f"boolean_{idx}": x.boolean,
+            }
+            for idx, x in enumerate(records)
+        ),
+    )
     insert_stmt = sa.insert(model).values([
         {
-            "name": x.name,
-            "float": x.float + 1,
-            "decimal": x.decimal,
-            "datetime": x.datetime,
-            "boolean": x.boolean,
+            "name": sa.bindparam(f"name_{idx}"),
+            "float": sa.bindparam(f"float_{idx}"),
+            "decimal": sa.bindparam(f"decimal_{idx}"),
+            "datetime": sa.bindparam(f"datetime_{idx}"),
+            "boolean": sa.bindparam(f"boolean_{idx}"),
         }
-        for x in records
+        for idx in range(len(records))
     ])
-    await async_cursor.execute(insert_stmt)
+    await async_cursor.execute(insert_stmt, params)
     assert async_cursor.rowcount == size
 
 
 async def test_description_async(async_cursor, model):
     assert async_cursor.description is None
-    select_stmt = sa.select(model).limit(1)
-    await async_cursor.execute(select_stmt)
+    select_stmt = sa.select(model).limit(sa.bindparam("limit"))
+    await async_cursor.execute(select_stmt, {"limit": 1})
     assert async_cursor.description is not None
     names = {x[0] for x in async_cursor.description}
     assert names == set(model.__table__.columns.keys())

@@ -84,7 +84,7 @@ class AsyncCursor(AsyncCursorABC[_R_co], Generic[_R_co]):
         self,
         operation: str | Executable,
         seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
-    ) -> AsyncCursorABC[Any]:
+    ) -> Self:
         await self._safe_run_in_thread(
             self._sync_cursor.executemany, operation, seq_of_parameters
         )

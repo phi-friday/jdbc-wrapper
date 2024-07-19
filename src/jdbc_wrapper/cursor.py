@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Generator, Iterator, Mapping, Sequence
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Generic, Literal
 
@@ -92,14 +92,10 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
         self,
         operation: str | Executable,
         seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
-    ) -> CursorABC[Any]:
-        if isinstance(seq_of_parameters, Mapping):
-            seq_of_parameters = list(seq_of_parameters.values())
-
+    ) -> Self:
         operation = self._ensure_operation(operation)
-        self._jpype_cursor.executemany(
-            operation, list(seq_of_parameters) if seq_of_parameters else None
-        )
+        seq_of_parameters = list(self._ensure_parameters(seq_of_parameters))
+        self._jpype_cursor.executemany(operation, seq_of_parameters)
         return self
 
     @wrap_errors
@@ -222,3 +218,12 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
         except TypeError as exc:
             error_msg = f"Failed to convert `{operation!s}` to query"
             raise TypeError(error_msg) from exc
+
+    def _ensure_parameters(
+        self, seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]]
+    ) -> Generator[Sequence[Any], None, None]:
+        for seq_or_parameter in seq_of_parameters:
+            if isinstance(seq_or_parameter, Mapping):
+                yield tuple(seq_or_parameter.values())
+            else:
+                yield seq_or_parameter

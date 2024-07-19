@@ -76,7 +76,7 @@ def test_commit(sync_engine, model):
     assert new.boolean is maybe.boolean
 
 
-def test_autocommit(sync_raw_connection, sync_engine, sync_session, model):
+def test_autocommit(sync_raw_connection, sync_session, model):
     new = model(
         name="test",
         float=1.0,
@@ -92,10 +92,12 @@ def test_autocommit(sync_raw_connection, sync_engine, sync_session, model):
         "datetime": new.datetime,
         "boolean": new.boolean,
     }
-    insert_stmt = str(
-        sa.insert(model)
-        .values(param)
-        .compile(sync_engine, compile_kwargs={"literal_binds": True})
+    insert_stmt = sa.insert(model).values(
+        name=sa.bindparam("name"),
+        float=sa.bindparam("float"),
+        decimal=sa.bindparam("decimal"),
+        datetime=sa.bindparam("datetime"),
+        boolean=sa.bindparam("boolean"),
     )
     select_stmt = (
         sa.select(model)
@@ -116,7 +118,7 @@ def test_autocommit(sync_raw_connection, sync_engine, sync_session, model):
     sync_raw_connection.autocommit = True
     assert sync_raw_connection.autocommit is True
     with sync_raw_connection.cursor() as cursor:
-        cursor.execute(insert_stmt)
+        cursor.execute(insert_stmt, param)
         cursor.fetchall()
 
     fetch = sync_session.execute(select_stmt, param)
@@ -125,8 +127,8 @@ def test_autocommit(sync_raw_connection, sync_engine, sync_session, model):
 
 
 def test_fetchone(sync_cursor, model, records):
-    select_stmt = sa.select(model).where(model.id == records[0].id)
-    sync_cursor.execute(select_stmt)
+    select_stmt = sa.select(model).where(model.id == sa.bindparam("id"))
+    sync_cursor.execute(select_stmt, {"id": records[0].id})
     row = sync_cursor.fetchone()
     assert row is not None
     assert isinstance(row, tuple)
@@ -142,8 +144,8 @@ def test_fetchone(sync_cursor, model, records):
 
 def test_fetchmany(sync_cursor, model, records):
     size = (len(records) // 2) or 1
-    select_stmt = sa.select(model).limit(len(records))
-    sync_cursor.execute(select_stmt)
+    select_stmt = sa.select(model).limit(sa.bindparam("size"))
+    sync_cursor.execute(select_stmt, {"size": len(records)})
     rows = sync_cursor.fetchmany(size)
     assert len(rows) == size
     assert all(isinstance(x, tuple) for x in rows)
@@ -151,11 +153,35 @@ def test_fetchmany(sync_cursor, model, records):
 
 def test_fetchall(sync_cursor, model, records):
     size = len(records)
-    select_stmt = sa.select(model).limit(size)
-    sync_cursor.execute(select_stmt)
+    select_stmt = sa.select(model).limit(sa.bindparam("size"))
+    sync_cursor.execute(select_stmt, {"size": size})
     rows = sync_cursor.fetchall()
     assert len(rows) == size
     assert all(isinstance(x, tuple) for x in rows)
+
+
+def test_executemany(sync_cursor, model, records):
+    insert_stmt = sa.insert(model).values(
+        name=sa.bindparam("name"),
+        float=sa.bindparam("float"),
+        decimal=sa.bindparam("decimal"),
+        datetime=sa.bindparam("datetime"),
+        boolean=sa.bindparam("boolean"),
+    )
+    values = [
+        {
+            "name": x.name,
+            "float": x.float,
+            "decimal": x.decimal,
+            "datetime": x.datetime,
+            "boolean": x.boolean,
+        }
+        for x in records
+    ]
+
+    sync_cursor.executemany(insert_stmt, values)
+
+    # TODO: assert
 
 
 async def test_rollback_async(async_session, model):
@@ -220,9 +246,7 @@ async def test_commit_async(async_engine, model):
     assert new.boolean is maybe.boolean
 
 
-async def test_autocommit_async(
-    async_raw_connection, async_engine, async_session, model
-):
+async def test_autocommit_async(async_raw_connection, async_session, model):
     new = model(
         name="test",
         float=1.0,
@@ -238,10 +262,12 @@ async def test_autocommit_async(
         "datetime": new.datetime,
         "boolean": new.boolean,
     }
-    insert_stmt = str(
-        sa.insert(model)
-        .values(param)
-        .compile(async_engine, compile_kwargs={"literal_binds": True})
+    insert_stmt = sa.insert(model).values(
+        name=sa.bindparam("name"),
+        float=sa.bindparam("float"),
+        decimal=sa.bindparam("decimal"),
+        datetime=sa.bindparam("datetime"),
+        boolean=sa.bindparam("boolean"),
     )
     select_stmt = (
         sa.select(model)
@@ -262,7 +288,7 @@ async def test_autocommit_async(
     async_raw_connection.autocommit = True
     assert async_raw_connection.autocommit is True
     async with async_raw_connection.cursor() as cursor:
-        await cursor.execute(insert_stmt)
+        await cursor.execute(insert_stmt, param)
         await cursor.fetchall()
 
     fetch = await async_session.execute(select_stmt, param)
@@ -271,8 +297,8 @@ async def test_autocommit_async(
 
 
 async def test_fetchone_async(async_cursor, model, records):
-    select_stmt = sa.select(model).where(model.id == records[0].id)
-    await async_cursor.execute(select_stmt)
+    select_stmt = sa.select(model).where(model.id == sa.bindparam("id"))
+    await async_cursor.execute(select_stmt, {"id": records[0].id})
     row = await async_cursor.fetchone()
     assert row is not None
     assert isinstance(row, tuple)
@@ -288,8 +314,8 @@ async def test_fetchone_async(async_cursor, model, records):
 
 async def test_fetchmany_async(async_cursor, model, records):
     size = (len(records) // 2) or 1
-    select_stmt = sa.select(model).limit(len(records))
-    await async_cursor.execute(select_stmt)
+    select_stmt = sa.select(model).limit(sa.bindparam("size"))
+    await async_cursor.execute(select_stmt, {"size": len(records)})
     rows = await async_cursor.fetchmany(size)
     assert len(rows) == size
     assert all(isinstance(x, tuple) for x in rows)
@@ -297,8 +323,32 @@ async def test_fetchmany_async(async_cursor, model, records):
 
 async def test_fetchall_async(async_cursor, model, records):
     size = len(records)
-    select_stmt = sa.select(model).limit(size)
-    await async_cursor.execute(select_stmt)
+    select_stmt = sa.select(model).limit(sa.bindparam("size"))
+    await async_cursor.execute(select_stmt, {"size": size})
     rows = await async_cursor.fetchall()
     assert len(rows) == size
     assert all(isinstance(x, tuple) for x in rows)
+
+
+async def test_executemany_async(async_cursor, model, records):
+    insert_stmt = sa.insert(model).values(
+        name=sa.bindparam("name"),
+        float=sa.bindparam("float"),
+        decimal=sa.bindparam("decimal"),
+        datetime=sa.bindparam("datetime"),
+        boolean=sa.bindparam("boolean"),
+    )
+    values = [
+        {
+            "name": x.name,
+            "float": x.float,
+            "decimal": x.decimal,
+            "datetime": x.datetime,
+            "boolean": x.boolean,
+        }
+        for x in records
+    ]
+
+    await async_cursor.executemany(insert_stmt, values)
+
+    # TODO: assert
