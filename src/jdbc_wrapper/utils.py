@@ -203,31 +203,16 @@ def wrap_errors(func: _F) -> _F:
     return inner  # pyright: ignore[reportReturnType]
 
 
-def catch_errors(func: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:  # noqa: C901
+def catch_errors(func: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:
     try:
         return func(*args, **kwargs)
     except (exceptions.Error, exceptions.Warning):
         raise
-    except jpype_dbapi2.NotSupportedError as exc:
-        raise exceptions.NotSupportedError(*exc.args) from exc
-    except jpype_dbapi2.ProgrammingError as exc:
-        raise exceptions.ProgrammingError(*exc.args) from exc
-    except jpype_dbapi2.InternalError as exc:
-        raise exceptions.InternalError(*exc.args) from exc
-    except jpype_dbapi2.IntegrityError as exc:
-        raise exceptions.IntegrityError(*exc.args) from exc
-    except jpype_dbapi2.OperationalError as exc:
-        raise exceptions.OperationalError(*exc.args) from exc
-    except jpype_dbapi2.DataError as exc:
-        raise exceptions.DataError(*exc.args) from exc
-    except jpype_dbapi2.DatabaseError as exc:
-        raise exceptions.DatabaseError(*exc.args) from exc
-    except jpype_dbapi2.InterfaceError as exc:
-        raise exceptions.InterfaceError(*exc.args) from exc
-    except jpype_dbapi2.Warning as exc:
-        raise exceptions.Warning(*exc.args) from exc
-    except jpype_dbapi2.Error as exc:
-        raise exceptions.Error(*exc.args) from exc
+    except (jpype_dbapi2.Error, jpype_dbapi2.Warning) as exc:
+        name = type(exc).__qualname__.split(".")[-1]
+        error_type = getattr(exceptions, name, exceptions.Error)
+        error = error_type(*exc.args)
+        raise error.with_traceback(exc.__traceback__) from exc.__cause__
 
 
 def find_connector_type(dsn: str) -> type[JDBCConnector]:
