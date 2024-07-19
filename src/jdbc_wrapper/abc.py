@@ -334,7 +334,7 @@ class CursorABC(ABC, Generic[_R_co]):
         """
 
     @abstractmethod
-    def fetchmany(self, size: int = -1) -> Sequence[_R_co]:
+    def fetchmany(self, size: int | None = None) -> Sequence[_R_co]:
         """Fetch the next set of rows of a query result,
         returning a sequence of sequences (e.g. a list of tuples).
         An empty sequence is returned when no more rows are available.
@@ -623,7 +623,7 @@ class AsyncCursorABC(CursorABC[_R_co], Generic[_R_co]):
 
     @abstractmethod
     @override
-    async def fetchmany(self, size: int = -1) -> Sequence[_R_co]: ...
+    async def fetchmany(self, size: int | None = None) -> Sequence[_R_co]: ...
 
     @abstractmethod
     @override

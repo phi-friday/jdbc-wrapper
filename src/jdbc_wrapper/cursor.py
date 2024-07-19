@@ -107,7 +107,8 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
 
     @wrap_errors
     @override
-    def fetchmany(self, size: int = -1) -> Sequence[_R_co]:
+    def fetchmany(self, size: int | None = None) -> Sequence[_R_co]:
+        size = size or self.arraysize
         fetch = self._jpype_cursor.fetchmany(size)
         return [tuple(row) for row in fetch]  # pyright: ignore[reportReturnType]
 

@@ -90,7 +90,8 @@ class AsyncCursor(AsyncCursorABC[_R_co], Generic[_R_co]):
         return await self._safe_run_in_thread(self._sync_cursor.fetchone)
 
     @override
-    async def fetchmany(self, size: int = -1) -> Sequence[_R_co]:
+    async def fetchmany(self, size: int | None = None) -> Sequence[_R_co]:
+        size = size or self.arraysize
         return await self._safe_run_in_thread(self._sync_cursor.fetchmany, size)
 
     @override
