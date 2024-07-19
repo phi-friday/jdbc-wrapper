@@ -1,0 +1,65 @@
+name: lint & test
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - "**.py"
+      - ".github/workflows/check*.yaml"
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - "**.py"
+      - ".github/workflows/check*.yaml"
+
+jobs:
+  build-process:
+    runs-on: ubuntu-latest
+
+    services:
+      postgresql:
+        image: postgres:15-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2019-latest
+        env:
+          SA_PASSWORD: Password123
+          ACCEPT_EULA: Y
+        ports:
+          - 1433:1433
+
+    strategy:
+      matrix:
+        python-version: ["3.12"] #["3.8", "3.9", "3.10", "3.11", "3.12"]
+        database-url:
+          - "sqlite+jdbc_wrapper://"
+          - "postgresql+jdbc_wrapper://postgres:postgres@localhost:5432/postgres"
+          - "mssql+jdbc_wrapper://sa:Password123@localhost:1433/master"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install rye
+        uses: phi-friday/install-rye@v1.5
+        id: install-rye
+        with:
+          python_version: ${{ matrix.python-version }}
+          use_uv: true
+
+      - name: Install dependencies
+        run: |
+          rye sync --features test
+
+      - name: Code checks
+        run: |
+          rye run pre-commit run --all-files --show-diff-on-failure
+
+      - name: Test with pytest
+        run: |
+          rye run pytest
+        env:
+          DATABASE_URL: ${{ matrix.database-url }}
