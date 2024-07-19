@@ -89,6 +89,11 @@ class AsyncConnection(AsyncConnectionABC[AsyncCursor[Any]]):
         with suppress(Exception):
             self._sync_connection.close()
 
+    @property
+    @override
+    def dsn(self) -> str:
+        return self._sync_connection.dsn
+
     async def _safe_run_in_thread(
         self, func: Callable[..., _T], *args: Any, **kwargs: Any
     ) -> _T:

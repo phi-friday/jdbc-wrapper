@@ -7,12 +7,13 @@ from typing import TYPE_CHECKING, Any, Generic, Literal
 from typing_extensions import Self, TypeVar, override
 
 from jdbc_wrapper.abc import ConnectionABC, CursorABC
-from jdbc_wrapper.utils import wrap_errors
+from jdbc_wrapper.utils import statement_to_query, wrap_errors
 
 if TYPE_CHECKING:
     from types import TracebackType
 
     from jpype import dbapi2 as jpype_dbapi2
+    from sqlalchemy.sql import Executable
 
     from jdbc_wrapper.types import Description, Query
 
@@ -73,12 +74,13 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
     @override
     def _execute(
         self,
-        operation: str,
+        operation: str | Executable,
         parameters: Sequence[Any] | Mapping[str, Any] | None = None,
     ) -> CursorABC[Any]:
         if isinstance(parameters, Mapping):
             parameters = list(parameters.values())
 
+        operation = self._ensure_operation(operation)
         self._jpype_cursor.execute(operation, list(parameters) if parameters else None)
         return self
 
@@ -86,12 +88,13 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
     @override
     def _executemany(
         self,
-        operation: str,
+        operation: str | Executable,
         seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
     ) -> CursorABC[Any]:
         if isinstance(seq_of_parameters, Mapping):
             seq_of_parameters = list(seq_of_parameters.values())
 
+        operation = self._ensure_operation(operation)
         self._jpype_cursor.executemany(
             operation, list(seq_of_parameters) if seq_of_parameters else None
         )
@@ -207,3 +210,13 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
     def __del__(self) -> None:
         with suppress(Exception):
             self.close()
+
+    def _ensure_operation(self, operation: str | Executable) -> str:
+        if isinstance(operation, str):
+            return operation
+
+        try:
+            return statement_to_query(operation, self.connection.dsn)
+        except TypeError as exc:
+            error_msg = f"Failed to convert `{operation!s}` to query"
+            raise TypeError(error_msg) from exc

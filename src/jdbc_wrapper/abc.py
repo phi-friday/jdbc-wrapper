@@ -15,11 +15,14 @@ from typing import TYPE_CHECKING, Any, Generic, Literal, NoReturn, overload
 
 from typing_extensions import Self, TypeVar, override
 
+from jdbc_wrapper.types import Description, Query
+
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterator, Mapping, Sequence
     from types import TracebackType
 
-    from jdbc_wrapper.types import Description, Query
+    from sqlalchemy.sql import Executable
+
 
 __all__ = []
 
@@ -107,6 +110,9 @@ class ConnectionABC(ABC, Generic[_C_co]):
 
     @abstractmethod
     def __del__(self) -> None: ...
+
+    @property
+    def dsn(self) -> str: ...
 
 
 class AsyncConnectionABC(ConnectionABC[_AT], Generic[_AT]):
@@ -220,18 +226,18 @@ class CursorABC(ABC, Generic[_R_co]):
     @overload
     def execute(
         self,
-        operation: str,
+        operation: str | Executable,
         parameters: Sequence[Any] | Mapping[str, Any] | None = None,
     ) -> CursorABC[Any]: ...
     @overload
     def execute(
         self,
-        operation: Query[_R2] | str,
+        operation: Query[_R2] | str | Executable,
         parameters: Sequence[Any] | Mapping[str, Any] | None = None,
     ) -> CursorABC[_R2] | CursorABC[Any]: ...
     def execute(
         self,
-        operation: Query[_R2] | str,
+        operation: Query[_R2] | str | Executable,
         parameters: Sequence[Any] | Mapping[str, Any] | None = None,
     ) -> CursorABC[_R2] | CursorABC[Any]:
         """Prepare and execute a database operation (query or command).
@@ -257,16 +263,14 @@ class CursorABC(ABC, Generic[_R_co]):
         insert multiple rows in a single operation,
         but this kind of usage is deprecated: `.executemany()` should be used instead.
         """  # noqa: RUF002
-        return (
-            self._execute(operation, parameters)
-            if isinstance(operation, str)
-            else self._execute(operation.statement, parameters)
-        )
+        if isinstance(operation, Query):
+            return self._execute(operation.statement, parameters)
+        return self._execute(operation, parameters)
 
     @abstractmethod
     def _execute(
         self,
-        operation: str,
+        operation: str | Executable,
         parameters: Sequence[Any] | Mapping[str, Any] | None = None,
     ) -> CursorABC[Any]: ...
 
@@ -279,19 +283,19 @@ class CursorABC(ABC, Generic[_R_co]):
     @overload
     def executemany(
         self,
-        operation: str,
+        operation: str | Executable,
         seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
     ) -> CursorABC[Any]: ...
     @overload
     def executemany(
         self,
-        operation: Query[_R2] | str,
+        operation: Query[_R2] | str | Executable,
         seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
     ) -> CursorABC[_R2] | CursorABC[Any]: ...
 
     def executemany(
         self,
-        operation: Query[_R2] | str,
+        operation: Query[_R2] | str | Executable,
         seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
     ) -> CursorABC[_R2] | CursorABC[Any]:
         """Prepare a database operation (query or command)
@@ -310,16 +314,14 @@ class CursorABC(ABC, Generic[_R_co]):
 
         The same comments as for `.execute()` also apply accordingly to this method.
         """
-        return (
-            self._executemany(operation, seq_of_parameters)
-            if isinstance(operation, str)
-            else self._executemany(operation.statement, seq_of_parameters)
-        )
+        if isinstance(operation, Query):
+            return self._executemany(operation.statement, seq_of_parameters)
+        return self._executemany(operation, seq_of_parameters)
 
     @abstractmethod
     def _executemany(
         self,
-        operation: str,
+        operation: str | Executable,
         seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
     ) -> CursorABC[Any]: ...
 
@@ -550,32 +552,30 @@ class AsyncCursorABC(CursorABC[_R_co], Generic[_R_co]):
     @overload
     async def execute(
         self,
-        operation: str,
+        operation: str | Executable,
         parameters: Sequence[Any] | Mapping[str, Any] | None = None,
     ) -> AsyncCursorABC[Any]: ...
     @overload
     async def execute(
         self,
-        operation: Query[_R2] | str,
+        operation: Query[_R2] | str | Executable,
         parameters: Sequence[Any] | Mapping[str, Any] | None = None,
     ) -> AsyncCursorABC[_R2] | AsyncCursorABC[Any]: ...
     @override
     async def execute(
         self,
-        operation: Query[_R2] | str,
+        operation: Query[_R2] | str | Executable,
         parameters: Sequence[Any] | Mapping[str, Any] | None = None,
     ) -> AsyncCursorABC[_R2] | AsyncCursorABC[Any]:
-        return await (
-            self._execute(operation, parameters)
-            if isinstance(operation, str)
-            else self._execute(operation.statement, parameters)
-        )
+        if isinstance(operation, Query):
+            return await self._execute(operation.statement, parameters)
+        return await self._execute(operation, parameters)
 
     @abstractmethod
     @override
     async def _execute(
         self,
-        operation: str,
+        operation: str | Executable,
         parameters: Sequence[Any] | Mapping[str, Any] | None = None,
     ) -> AsyncCursorABC[Any]: ...
 
@@ -588,32 +588,30 @@ class AsyncCursorABC(CursorABC[_R_co], Generic[_R_co]):
     @overload
     async def executemany(
         self,
-        operation: str,
+        operation: str | Executable,
         seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
     ) -> AsyncCursorABC[Any]: ...
     @overload
     async def executemany(
         self,
-        operation: Query[_R2] | str,
+        operation: Query[_R2] | str | Executable,
         seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
     ) -> AsyncCursorABC[_R2] | AsyncCursorABC[Any]: ...
     @override
     async def executemany(
         self,
-        operation: Query[_R2] | str,
+        operation: Query[_R2] | str | Executable,
         seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
     ) -> CursorABC[_R2] | CursorABC[Any]:
-        return await (
-            self._executemany(operation, seq_of_parameters)
-            if isinstance(operation, str)
-            else self._executemany(operation.statement, seq_of_parameters)
-        )
+        if isinstance(operation, Query):
+            return await self._executemany(operation.statement, seq_of_parameters)
+        return await self._executemany(operation, seq_of_parameters)
 
     @abstractmethod
     @override
     async def _executemany(
         self,
-        operation: str,
+        operation: str | Executable,
         seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
     ) -> CursorABC[Any]: ...
 

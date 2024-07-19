@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import logging
 from functools import wraps
+from importlib.util import find_spec
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import jpype
 from jpype import dbapi2 as jpype_dbapi2
-from typing_extensions import TypeVar
+from typing_extensions import TypeGuard, TypeVar
 
 from jdbc_wrapper import const as jdbc_wrapper_const
 from jdbc_wrapper import exceptions
@@ -18,8 +19,13 @@ if TYPE_CHECKING:
     from os import PathLike
 
     from sqlalchemy.engine.url import URL
+    from sqlalchemy.sql.base import Executable
+    from sqlalchemy.sql.elements import CompilerElement
 
     from jdbc_wrapper._sqlalchemy.connector import JDBCConnector
+
+    class ExecutableAndCompiled(Executable, CompilerElement): ...
+
 
 __all__ = []
 
@@ -28,6 +34,7 @@ _T = TypeVar("_T")
 
 _driver_registry: dict[str, Any] = {}
 logger = logging.getLogger("jdbc_wrapper")
+_USE_SQLALCHEMY = find_spec("sqlalchemy") is not None
 
 
 class Java:
@@ -223,27 +230,31 @@ def catch_errors(func: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:  # n
         raise exceptions.Error(*exc.args) from exc
 
 
+def find_connector_type(dsn: str) -> type[JDBCConnector]:
+    if dsn.startswith(jdbc_wrapper_const.SQLITE_JDBC_PREFIX[0]):
+        from jdbc_wrapper._sqlalchemy.sqlite import SQJDBCDialect
+
+        return SQJDBCDialect
+    if dsn.startswith(jdbc_wrapper_const.POSTGRESQL_DSN_PREFIX[0]):
+        from jdbc_wrapper._sqlalchemy.postgresql import PGJDBCDialect
+
+        return PGJDBCDialect
+    if dsn.startswith(jdbc_wrapper_const.MSSQL_DSN_PREFIX[0]):
+        from jdbc_wrapper._sqlalchemy.mssql import MSJDBCDialect
+
+        return MSJDBCDialect
+
+    error_msg = f"Unknown JDBC DSN: {dsn}"
+    raise ValueError(error_msg)
+
+
 def dsn_to_url(
     dsn: str, connector: type[JDBCConnector] | JDBCConnector | None = None
 ) -> URL:
     from sqlalchemy.engine.url import make_url
 
     if connector is None:
-        if dsn.startswith(jdbc_wrapper_const.SQLITE_JDBC_PREFIX[0]):
-            from jdbc_wrapper._sqlalchemy.sqlite import (
-                SQJDBCDialect as connector,  # noqa: N813
-            )
-        elif dsn.startswith(jdbc_wrapper_const.POSTGRESQL_DSN_PREFIX[0]):
-            from jdbc_wrapper._sqlalchemy.postgresql import (
-                PGJDBCDialect as connector,  # noqa: N813
-            )
-        elif dsn.startswith(jdbc_wrapper_const.MSSQL_DSN_PREFIX[0]):
-            from jdbc_wrapper._sqlalchemy.mssql import (
-                MSJDBCDialect as connector,  # noqa: N813
-            )
-        else:
-            error_msg = f"Unknown JDBC DSN: {dsn}"
-            raise ValueError(error_msg)
+        connector = find_connector_type(dsn)
 
     if connector.name == "sqlite":
         dsn_prefix = "".join(jdbc_wrapper_const.SQLITE_JDBC_PREFIX)
@@ -286,3 +297,28 @@ def url_to_dsn(
             raise ValueError(error_msg)
 
     return connector.parse_dsn_parts(url)
+
+
+def is_sqlalchemy_executable(statement: Any) -> TypeGuard[ExecutableAndCompiled]:
+    if not _USE_SQLALCHEMY:
+        return False
+
+    from sqlalchemy.sql.base import Executable
+    from sqlalchemy.sql.elements import CompilerElement
+
+    return isinstance(statement, Executable) and isinstance(statement, CompilerElement)
+
+
+def statement_to_query(statement: Any, dsn: str) -> str:
+    if not is_sqlalchemy_executable(statement):
+        error_msg = "Statement is not an SQLAlchemy executable."
+        raise TypeError(error_msg)
+
+    import sqlalchemy as sa
+
+    sa.text("").compile()
+    connector_type = find_connector_type(dsn)
+    connector = connector_type()
+    return str(
+        statement.compile(dialect=connector, compile_kwargs={"literal_binds": True})
+    )

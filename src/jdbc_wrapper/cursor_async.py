@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
     from types import TracebackType
 
+    from sqlalchemy.sql import Executable
+
     from jdbc_wrapper.types import Description, Query
 
 __all__ = []
@@ -68,7 +70,7 @@ class AsyncCursor(AsyncCursorABC[_R_co], Generic[_R_co]):
     @override
     async def _execute(
         self,
-        operation: str,
+        operation: str | Executable,
         parameters: Sequence[Any] | Mapping[str, Any] | None = None,
     ) -> AsyncCursorABC[Any]:
         await self._safe_run_in_thread(self._sync_cursor.execute, operation, parameters)
@@ -77,7 +79,7 @@ class AsyncCursor(AsyncCursorABC[_R_co], Generic[_R_co]):
     @override
     async def _executemany(
         self,
-        operation: str,
+        operation: str | Executable,
         seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
     ) -> AsyncCursorABC[Any]:
         await self._safe_run_in_thread(
