@@ -9,41 +9,11 @@ from decimal import Decimal
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import (
-    DeclarativeBase,
-    Mapped,
-    MappedAsDataclass,
-    Session,
-    mapped_column,
-)
-
-metadata = sa.MetaData()
+from sqlalchemy.orm import Session
 
 
-class Base(DeclarativeBase, MappedAsDataclass): ...
-
-
-class Table(Base, kw_only=True):
-    __tablename__ = "test_table"
-    metadata = metadata
-
-    id: Mapped[int] = mapped_column(init=False, primary_key=True, autoincrement=True)
-    name: Mapped[str]
-    float: Mapped[float]
-    decimal: Mapped[Decimal] = mapped_column(sa.Numeric(precision=10, scale=2))
-    datetime: Mapped[datetime_class] = mapped_column(sa.DateTime(timezone=False))
-    boolean: Mapped[bool]
-
-
-@pytest.fixture(scope="module", autouse=True)
-def table(sync_engine) -> sa.Table:
-    with sync_engine.begin() as conn:
-        metadata.create_all(conn, checkfirst=True)
-    return Table.__table__  # pyright: ignore[reportReturnType]
-
-
-def test_rollback(sync_session):
-    new = Table(
+def test_rollback(sync_session, model):
+    new = model(
         name="test",
         float=1.0,
         decimal=Decimal("1.1"),
@@ -55,12 +25,12 @@ def test_rollback(sync_session):
     sync_session.refresh(new)
     new_id = int(new.id)
     sync_session.rollback()
-    maybe = sync_session.get(Table, new_id)
+    maybe = sync_session.get(model, new_id)
     assert maybe is None
 
 
-def test_no_commit(sync_engine):
-    new = Table(
+def test_no_commit(sync_engine, model):
+    new = model(
         name="test",
         float=1.0,
         decimal=Decimal("1.1"),
@@ -74,12 +44,12 @@ def test_no_commit(sync_engine):
         new_id = int(new.id)
 
     with Session(sync_engine) as session:
-        maybe = session.get(Table, new_id)
+        maybe = session.get(model, new_id)
         assert maybe is None
 
 
-def test_commit(sync_engine):
-    new = Table(
+def test_commit(sync_engine, model):
+    new = model(
         name="test",
         float=1.0,
         decimal=Decimal("1.1"),
@@ -93,7 +63,7 @@ def test_commit(sync_engine):
         new_id = int(new.id)
 
     with Session(sync_engine) as session:
-        maybe = session.get(Table, new_id)
+        maybe = session.get(model, new_id)
         assert maybe is not None
 
     assert new.id == maybe.id
@@ -104,8 +74,8 @@ def test_commit(sync_engine):
     assert new.boolean is maybe.boolean
 
 
-def test_autocommit(sync_raw_connection, sync_engine, sync_session):
-    new = Table(
+def test_autocommit(sync_raw_connection, sync_engine, sync_session, model):
+    new = model(
         name="test",
         float=1.0,
         decimal=Decimal("1.1"),
@@ -121,24 +91,24 @@ def test_autocommit(sync_raw_connection, sync_engine, sync_session):
         "boolean": new.boolean,
     }
     insert_stmt = str(
-        sa.insert(Table)
+        sa.insert(model)
         .values(param)
         .compile(sync_engine, compile_kwargs={"literal_binds": True})
     )
     select_stmt = (
-        sa.select(Table)
+        sa.select(model)
         .with_only_columns(
-            Table.name, Table.float, Table.decimal, Table.datetime, Table.boolean
+            model.name, model.float, model.decimal, model.datetime, model.boolean
         )
         .where(
-            Table.name == sa.bindparam("name", type_=sa.String()),
-            Table.float == sa.bindparam("float", type_=sa.Float()),
-            Table.decimal == sa.bindparam("decimal", type_=sa.Numeric()),
-            Table.datetime
+            model.name == sa.bindparam("name", type_=sa.String()),
+            model.float == sa.bindparam("float", type_=sa.Float()),
+            model.decimal == sa.bindparam("decimal", type_=sa.Numeric()),
+            model.datetime
             == sa.bindparam("datetime", type_=sa.DateTime(timezone=False)),
-            Table.boolean == sa.bindparam("boolean", type_=sa.Boolean()),
+            model.boolean == sa.bindparam("boolean", type_=sa.Boolean()),
         )
-        .order_by(Table.datetime.desc())
+        .order_by(model.datetime.desc())
     )
 
     sync_raw_connection.autocommit = True
@@ -153,8 +123,8 @@ def test_autocommit(sync_raw_connection, sync_engine, sync_session):
 
 
 @pytest.mark.anyio()
-async def test_rollback_async(async_session):
-    new = Table(
+async def test_rollback_async(async_session, model):
+    new = model(
         name="test",
         float=1.0,
         decimal=Decimal("1.1"),
@@ -166,13 +136,13 @@ async def test_rollback_async(async_session):
     await async_session.refresh(new)
     new_id = int(new.id)
     await async_session.rollback()
-    maybe = await async_session.get(Table, new_id)
+    maybe = await async_session.get(model, new_id)
     assert maybe is None
 
 
 @pytest.mark.anyio()
-async def test_no_commit_async(async_engine):
-    new = Table(
+async def test_no_commit_async(async_engine, model):
+    new = model(
         name="test",
         float=1.0,
         decimal=Decimal("1.1"),
@@ -186,13 +156,13 @@ async def test_no_commit_async(async_engine):
         new_id = int(new.id)
 
     async with AsyncSession(async_engine) as session:
-        maybe = await session.get(Table, new_id)
+        maybe = await session.get(model, new_id)
         assert maybe is None
 
 
 @pytest.mark.anyio()
-async def test_commit_async(async_engine):
-    new = Table(
+async def test_commit_async(async_engine, model):
+    new = model(
         name="test",
         float=1.0,
         decimal=Decimal("1.1"),
@@ -206,7 +176,7 @@ async def test_commit_async(async_engine):
         new_id = int(new.id)
 
     async with AsyncSession(async_engine) as session:
-        maybe = await session.get(Table, new_id)
+        maybe = await session.get(model, new_id)
         assert maybe is not None
 
     assert new.id == maybe.id
@@ -218,8 +188,10 @@ async def test_commit_async(async_engine):
 
 
 @pytest.mark.anyio()
-async def test_autocommit_async(async_raw_connection, async_engine, async_session):
-    new = Table(
+async def test_autocommit_async(
+    async_raw_connection, async_engine, async_session, model
+):
+    new = model(
         name="test",
         float=1.0,
         decimal=Decimal("1.1"),
@@ -235,24 +207,24 @@ async def test_autocommit_async(async_raw_connection, async_engine, async_sessio
         "boolean": new.boolean,
     }
     insert_stmt = str(
-        sa.insert(Table)
+        sa.insert(model)
         .values(param)
         .compile(async_engine, compile_kwargs={"literal_binds": True})
     )
     select_stmt = (
-        sa.select(Table)
+        sa.select(model)
         .with_only_columns(
-            Table.name, Table.float, Table.decimal, Table.datetime, Table.boolean
+            model.name, model.float, model.decimal, model.datetime, model.boolean
         )
         .where(
-            Table.name == sa.bindparam("name", type_=sa.String()),
-            Table.float == sa.bindparam("float", type_=sa.Float()),
-            Table.decimal == sa.bindparam("decimal", type_=sa.Numeric()),
-            Table.datetime
+            model.name == sa.bindparam("name", type_=sa.String()),
+            model.float == sa.bindparam("float", type_=sa.Float()),
+            model.decimal == sa.bindparam("decimal", type_=sa.Numeric()),
+            model.datetime
             == sa.bindparam("datetime", type_=sa.DateTime(timezone=False)),
-            Table.boolean == sa.bindparam("boolean", type_=sa.Boolean()),
+            model.boolean == sa.bindparam("boolean", type_=sa.Boolean()),
         )
-        .order_by(Table.datetime.desc())
+        .order_by(model.datetime.desc())
     )
 
     async_raw_connection.autocommit = True

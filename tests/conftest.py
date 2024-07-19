@@ -6,6 +6,8 @@ import re
 import shutil
 import uuid
 from collections.abc import AsyncGenerator, Generator
+from datetime import datetime as datetime_class
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -14,20 +16,39 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine as sa_create_async_engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    MappedAsDataclass,
+    Session,
+    mapped_column,
+)
 
 import jdbc_wrapper
 from jdbc_wrapper import const as jdbc_wrapper_const
 from jdbc_wrapper._loader import find_loader
 from jdbc_wrapper._loader import load as load_jdbc_modules
-from jdbc_wrapper._sqlalchemy._connector.utils import url_to_dsn
-
-# isort: off
-import anyio  # noqa: F401 # pyright: ignore[reportUnusedImport]
-# isort: on
+from jdbc_wrapper.utils import url_to_dsn
 
 test_dir = Path(__file__).parent  # root/tests
 cache_dir = test_dir.parent / ".cache"  # root/.cache
+
+metadata = sa.MetaData()
+
+
+class Base(DeclarativeBase, MappedAsDataclass): ...
+
+
+class Table(Base, kw_only=True):
+    __tablename__ = "test_table"
+    metadata = metadata
+
+    id: Mapped[int] = mapped_column(init=False, primary_key=True, autoincrement=True)
+    name: Mapped[str]
+    float: Mapped[float]
+    decimal: Mapped[Decimal] = mapped_column(sa.Numeric(precision=10, scale=2))
+    datetime: Mapped[datetime_class] = mapped_column(sa.DateTime(timezone=False))
+    boolean: Mapped[bool]
 
 
 def _create_temp_dir() -> Path:
@@ -218,6 +239,18 @@ def sync_engine(create_sync_engine: sa.engine.Engine) -> sa.engine.Engine:
 
 
 @pytest.fixture(scope="session")
+def table(sync_engine: sa.engine.Engine) -> sa.Table:
+    with sync_engine.begin() as conn:
+        metadata.create_all(conn, checkfirst=True)
+    return Table.__table__  # pyright: ignore[reportReturnType]
+
+
+@pytest.fixture(scope="session")
+def model(table) -> type[Table]:  # type: ignore # noqa: ARG001
+    return Table
+
+
+@pytest.fixture(scope="session")
 async def create_async_engine(
     url: sa.engine.url.URL,
 ) -> AsyncGenerator[AsyncEngine, None]:
@@ -235,16 +268,15 @@ def async_engine(create_async_engine: AsyncEngine) -> AsyncEngine:
 
 @pytest.fixture()
 def create_sync_raw_connection(
-    sync_engine: sa.engine.Engine,
+    jdbc_dsn: str,
+    jdbc_driver: str,
+    jdbc_modules: str | tuple[str, ...],
+    jdbc_driver_args: dict[str, Any],
 ) -> Generator[jdbc_wrapper.Connection, None, None]:
-    proxy = sync_engine.raw_connection()
-    connection = proxy.driver_connection
-    assert isinstance(connection, jdbc_wrapper.Connection)
-    try:
-        with connection:
-            yield connection
-    finally:
-        proxy.close()
+    with jdbc_wrapper.connect(
+        jdbc_dsn, jdbc_driver, jdbc_modules, jdbc_driver_args, is_async=False
+    ) as connection:
+        yield connection
 
 
 @pytest.fixture()
@@ -255,20 +287,29 @@ def sync_raw_connection(
 
 
 @pytest.fixture()
+def create_sync_cursor(
+    sync_raw_connection: jdbc_wrapper.Connection,
+) -> Generator[jdbc_wrapper.Cursor, None, None]:
+    with sync_raw_connection.cursor() as cursor:
+        yield cursor
+
+
+@pytest.fixture()
+def sync_cursor(create_sync_cursor: jdbc_wrapper.Cursor) -> jdbc_wrapper.Cursor:
+    return create_sync_cursor
+
+
+@pytest.fixture()
 async def create_async_raw_connection(
-    async_engine: AsyncEngine,
+    jdbc_dsn: str,
+    jdbc_driver: str,
+    jdbc_modules: str | tuple[str, ...],
+    jdbc_driver_args: dict[str, Any],
 ) -> AsyncGenerator[jdbc_wrapper.AsyncConnection, None]:
-    proxy = await async_engine.raw_connection()
-    sa_connection = proxy.driver_connection
-    assert isinstance(sa_connection, sa.AdaptedConnection)
-    connection = sa_connection.driver_connection
-    assert isinstance(connection, jdbc_wrapper.AsyncConnection)
-    try:
-        async with connection:
-            yield connection
-    finally:
-        await connection.close()
-        proxy.close()
+    async with jdbc_wrapper.connect(
+        jdbc_dsn, jdbc_driver, jdbc_modules, jdbc_driver_args, is_async=True
+    ) as connection:
+        yield connection
 
 
 @pytest.fixture()
@@ -276,6 +317,21 @@ async def async_raw_connection(
     create_async_raw_connection: jdbc_wrapper.AsyncConnection,
 ) -> jdbc_wrapper.AsyncConnection:
     return create_async_raw_connection
+
+
+@pytest.fixture()
+async def create_async_cursor(
+    async_raw_connection: jdbc_wrapper.AsyncConnection,
+) -> AsyncGenerator[jdbc_wrapper.AsyncCursor, None]:
+    async with async_raw_connection.cursor() as cursor:
+        yield cursor
+
+
+@pytest.fixture()
+async def async_cursor(
+    create_async_cursor: jdbc_wrapper.AsyncCursor,
+) -> jdbc_wrapper.AsyncCursor:
+    return create_async_cursor
 
 
 @pytest.fixture()
