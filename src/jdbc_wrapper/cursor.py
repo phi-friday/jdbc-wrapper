@@ -68,6 +68,8 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
     @wrap_errors
     @override
     def close(self) -> None:
+        if self.is_closed:
+            return
         self._jpype_cursor.close()
 
     @wrap_errors

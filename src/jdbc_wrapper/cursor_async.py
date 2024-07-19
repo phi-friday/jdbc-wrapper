@@ -65,6 +65,9 @@ class AsyncCursor(AsyncCursorABC[_R_co], Generic[_R_co]):
 
     @override
     async def close(self) -> None:
+        if self.is_closed:
+            await asyncio.sleep(0)
+            return None
         return await self._safe_run_in_thread(self._sync_cursor.close)
 
     @override

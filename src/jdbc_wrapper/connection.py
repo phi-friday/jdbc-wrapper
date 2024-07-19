@@ -40,6 +40,8 @@ class Connection(ConnectionABC[Cursor[Any]]):
     @wrap_errors
     @override
     def close(self) -> None:
+        if self.is_closed:
+            return
         self._jpype_connection.close()
 
     @wrap_errors
