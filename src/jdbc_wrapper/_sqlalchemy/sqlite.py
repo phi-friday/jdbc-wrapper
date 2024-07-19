@@ -15,6 +15,7 @@ from jdbc_wrapper._sqlalchemy.connector import (
     DbapiModule,
     JDBCConnector,
 )
+from jdbc_wrapper.const import SQLITE_JDBC_PREFIX
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -26,11 +27,7 @@ if TYPE_CHECKING:
 
 class SQJDBCDialect(JDBCConnector, SQLiteDialect):
     settings = ConnectorSettings(
-        jdbc_dsn_prefix=("jdbc:sqlite:",),
-        name="sqlite",
-        driver="jdbc_wrapper",
-        inherit=SQLiteDialect,
-        is_async=False,
+        name="sqlite", driver="jdbc_wrapper", inherit=SQLiteDialect, is_async=False
     )
 
     @property
@@ -53,7 +50,7 @@ class SQJDBCDialect(JDBCConnector, SQLiteDialect):
     @classmethod
     @override
     def parse_dsn_parts(cls, url: URL) -> tuple[str, Mapping[str, Any]]:
-        dsn = "".join(cls.jdbc_dsn_prefix)
+        dsn = "".join(SQLITE_JDBC_PREFIX)
         if url.database:
             database = Path(url.database).resolve()
             dsn += str(database)
@@ -70,11 +67,7 @@ class SQJDBCDialect(JDBCConnector, SQLiteDialect):
 
 class AsyncSQJDBCDialect(SQJDBCDialect):
     settings = ConnectorSettings(
-        jdbc_dsn_prefix=SQJDBCDialect.jdbc_dsn_prefix,
-        name="sqlite",
-        driver="jdbc_async_wrapper",
-        inherit=SQJDBCDialect,
-        is_async=True,
+        name="sqlite", driver="jdbc_async_wrapper", inherit=SQJDBCDialect, is_async=True
     )
 
 

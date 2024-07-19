@@ -8,6 +8,7 @@ from sqlalchemy.dialects.mssql.base import MSDialect
 from typing_extensions import override
 
 from jdbc_wrapper._sqlalchemy.connector import ConnectorSettings, JDBCConnector
+from jdbc_wrapper.const import MSSQL_DSN_PREFIX
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -18,11 +19,7 @@ if TYPE_CHECKING:
 
 class MSJDBCDialect(JDBCConnector, MSDialect):
     settings = ConnectorSettings(
-        jdbc_dsn_prefix=("jdbc:sqlserver:", "//"),
-        name="mssql",
-        driver="jdbc_wrapper",
-        inherit=MSDialect,
-        is_async=False,
+        name="mssql", driver="jdbc_wrapper", inherit=MSDialect, is_async=False
     )
 
     @override
@@ -32,7 +29,7 @@ class MSJDBCDialect(JDBCConnector, MSDialect):
     @classmethod
     @override
     def parse_dsn_parts(cls, url: URL) -> tuple[str, Mapping[str, Any]]:
-        dsn = "".join(cls.jdbc_dsn_prefix)
+        dsn = "".join(MSSQL_DSN_PREFIX)
         if url.host:
             dsn += url.host
         if url.port:
@@ -61,11 +58,7 @@ class MSJDBCDialect(JDBCConnector, MSDialect):
 
 class AsyncMSJDBCDialect(MSJDBCDialect):
     settings = ConnectorSettings(
-        jdbc_dsn_prefix=MSJDBCDialect.jdbc_dsn_prefix,
-        name="mssql",
-        driver="jdbc_async_wrapper",
-        inherit=MSJDBCDialect,
-        is_async=True,
+        name="mssql", driver="jdbc_async_wrapper", inherit=MSJDBCDialect, is_async=True
     )
 
 

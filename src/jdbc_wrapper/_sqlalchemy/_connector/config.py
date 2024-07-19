@@ -4,8 +4,6 @@ import sys
 from dataclasses import MISSING, asdict, dataclass, fields
 from typing import TYPE_CHECKING, Any
 
-from typing_extensions import Unpack
-
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping
 
@@ -39,7 +37,6 @@ class ConnectorSettings:
     driver: str
     """identifying name for the dialect's DBAPI"""
 
-    jdbc_dsn_prefix: tuple[str, Unpack[tuple[str, ...]]]
     inherit: type[Dialect] | None = None
 
     supports_alter: bool = unset

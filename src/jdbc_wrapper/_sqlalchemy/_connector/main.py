@@ -8,7 +8,7 @@ from sqlalchemy import util as sa_util
 from sqlalchemy.connectors import Connector
 from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.engine.interfaces import BindTyping, DBAPIConnection, IsolationLevel
-from typing_extensions import Unpack, override
+from typing_extensions import override
 
 from jdbc_wrapper._sqlalchemy._connector.config import (
     ConnectorSettings,
@@ -18,7 +18,6 @@ from jdbc_wrapper._sqlalchemy._connector.connection_async import (
     AsyncConnection,
     AsyncConnectionFallback,
 )
-from jdbc_wrapper._sqlalchemy._connector.utils import dsn_to_url
 from jdbc_wrapper._sqlalchemy._connector.utils_async import await_fallback
 from jdbc_wrapper.abc import ConnectionABC
 from jdbc_wrapper.connection import connect as sync_connect
@@ -30,6 +29,7 @@ from jdbc_wrapper.const import (
     PARAM_STYLE,
 )
 from jdbc_wrapper.exceptions import OperationalError
+from jdbc_wrapper.utils import dsn_to_url
 from jdbc_wrapper.utils_async import await_ as jdbc_await
 
 if TYPE_CHECKING:
@@ -82,7 +82,6 @@ class DefaultConnector(DefaultDialect, Connector):  # pyright: ignore[reportInco
 class JDBCConnector(DefaultConnector, metaclass=JDBCConnectorMeta):
     _jdbc_wrapper_dialect_settings: ConnectorSettings
     settings = ConnectorSettings(
-        jdbc_dsn_prefix=("jdbc:", "//"),
         name="jdbc_wrapper_base_connector",
         driver="jdbc_wrapper_base_driver",
         inherit=DefaultConnector,
@@ -91,7 +90,6 @@ class JDBCConnector(DefaultConnector, metaclass=JDBCConnectorMeta):
         supports_native_decimal=True,
         bind_typing=BindTyping.NONE,
     )
-    jdbc_dsn_prefix: tuple[str, Unpack[tuple[str, ...]]]
     default_paramstyle = PARAM_STYLE
 
     @classmethod

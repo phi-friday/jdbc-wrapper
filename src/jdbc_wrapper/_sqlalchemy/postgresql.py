@@ -9,6 +9,7 @@ from sqlalchemy.engine.url import URL
 from typing_extensions import override
 
 from jdbc_wrapper._sqlalchemy.connector import ConnectorSettings, JDBCConnector
+from jdbc_wrapper.const import POSTGRESQL_DSN_PREFIX
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -19,11 +20,7 @@ if TYPE_CHECKING:
 
 class PGJDBCDialect(JDBCConnector, PGDialect):
     settings = ConnectorSettings(
-        jdbc_dsn_prefix=("jdbc:postgresql:", "//"),
-        name="postgresql",
-        driver="jdbc_wrapper",
-        inherit=PGDialect,
-        is_async=False,
+        name="postgresql", driver="jdbc_wrapper", inherit=PGDialect, is_async=False
     )
 
     @override
@@ -33,7 +30,7 @@ class PGJDBCDialect(JDBCConnector, PGDialect):
     @classmethod
     @override
     def parse_dsn_parts(cls, url: URL) -> tuple[str, Mapping[str, Any]]:
-        dsn = "".join(cls.jdbc_dsn_prefix)
+        dsn = "".join(POSTGRESQL_DSN_PREFIX)
         if url.host:
             dsn += url.host
         if url.port:
@@ -59,7 +56,6 @@ class PGJDBCDialect(JDBCConnector, PGDialect):
 
 class AsyncPGJDBCDialect(PGJDBCDialect):
     settings = ConnectorSettings(
-        jdbc_dsn_prefix=PGJDBCDialect.jdbc_dsn_prefix,
         name="postgresql",
         driver="jdbc_async_wrapper",
         inherit=PGJDBCDialect,

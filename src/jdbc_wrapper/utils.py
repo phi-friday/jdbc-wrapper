@@ -10,11 +10,16 @@ import jpype
 from jpype import dbapi2 as jpype_dbapi2
 from typing_extensions import TypeVar
 
+from jdbc_wrapper import const as jdbc_wrapper_const
 from jdbc_wrapper import exceptions
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, MutableSequence
     from os import PathLike
+
+    from sqlalchemy.engine.url import URL
+
+    from jdbc_wrapper._sqlalchemy.connector import JDBCConnector
 
 __all__ = []
 
@@ -216,3 +221,68 @@ def catch_errors(func: Callable[..., _T], *args: Any, **kwargs: Any) -> _T:  # n
         raise exceptions.Warning(*exc.args) from exc
     except jpype_dbapi2.Error as exc:
         raise exceptions.Error(*exc.args) from exc
+
+
+def dsn_to_url(
+    dsn: str, connector: type[JDBCConnector] | JDBCConnector | None = None
+) -> URL:
+    from sqlalchemy.engine.url import make_url
+
+    if connector is None:
+        if dsn.startswith(jdbc_wrapper_const.SQLITE_JDBC_PREFIX[0]):
+            from jdbc_wrapper._sqlalchemy.sqlite import (
+                SQJDBCDialect as connector,  # noqa: N813
+            )
+        elif dsn.startswith(jdbc_wrapper_const.POSTGRESQL_DSN_PREFIX[0]):
+            from jdbc_wrapper._sqlalchemy.postgresql import (
+                PGJDBCDialect as connector,  # noqa: N813
+            )
+        elif dsn.startswith(jdbc_wrapper_const.MSSQL_DSN_PREFIX[0]):
+            from jdbc_wrapper._sqlalchemy.mssql import (
+                MSJDBCDialect as connector,  # noqa: N813
+            )
+        else:
+            error_msg = f"Unknown JDBC DSN: {dsn}"
+            raise ValueError(error_msg)
+
+    if connector.name == "sqlite":
+        dsn_prefix = "".join(jdbc_wrapper_const.SQLITE_JDBC_PREFIX)
+    elif connector.name == "postgresql":
+        dsn_prefix = "".join(jdbc_wrapper_const.POSTGRESQL_DSN_PREFIX)
+    elif connector.name == "mssql":
+        dsn_prefix = "".join(jdbc_wrapper_const.MSSQL_DSN_PREFIX)
+    else:
+        error_msg = f"Unknown JDBC DSN: {dsn}"
+        raise ValueError(error_msg)
+
+    url_parts = dsn.removeprefix(dsn_prefix)
+
+    url = connector.name + "+" + connector.driver + "://" + url_parts
+    return make_url(url)
+
+
+def url_to_dsn(
+    url: str | URL, connector: type[JDBCConnector] | JDBCConnector | None = None
+) -> tuple[str, Mapping[str, Any]]:
+    from sqlalchemy.engine.url import make_url
+
+    url = make_url(url)
+    if connector is None:
+        backend = url.get_backend_name()
+        if backend == "sqlite":
+            from jdbc_wrapper._sqlalchemy.sqlite import (
+                SQJDBCDialect as connector,  # noqa: N813
+            )
+        elif backend == "postgresql":
+            from jdbc_wrapper._sqlalchemy.postgresql import (
+                PGJDBCDialect as connector,  # noqa: N813
+            )
+        elif backend == "mssql":
+            from jdbc_wrapper._sqlalchemy.mssql import (
+                MSJDBCDialect as connector,  # noqa: N813
+            )
+        else:
+            error_msg = f"Unknown JDBC URL: {url}"
+            raise ValueError(error_msg)
+
+    return connector.parse_dsn_parts(url)
