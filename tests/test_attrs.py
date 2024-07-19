@@ -3,45 +3,13 @@
 from __future__ import annotations
 
 import threading
-from datetime import datetime as datetime_class
-from datetime import timezone
-from decimal import Decimal
 
 import pytest
 import sqlalchemy as sa
-from sqlalchemy.orm import Session
 
 import jdbc_wrapper
 
 pytestmark = pytest.mark.anyio
-
-
-@pytest.fixture(scope="module", autouse=True)
-def records(sync_engine, model):
-    records = [
-        model(
-            name="test",
-            float=x,
-            decimal=Decimal(f"{x}.{x}"),
-            datetime=datetime_class.now(timezone.utc),
-            boolean=True,
-        )
-        for x in range(10)
-    ]
-    with Session(sync_engine) as session:
-        session.add_all(records)
-        session.commit()
-        records = (
-            session.execute(
-                sa.select(model).where(model.id.in_([x.id for x in records]))
-            )
-            .scalars()
-            .all()
-        )
-
-    for record in records:
-        assert record.id is not None
-    return records
 
 
 def test_autocommit(sync_raw_connection):

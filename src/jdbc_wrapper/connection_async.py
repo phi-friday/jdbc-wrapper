@@ -41,6 +41,9 @@ class AsyncConnection(AsyncConnectionABC[AsyncCursor[Any]]):
 
     @override
     async def close(self) -> None:
+        if self.is_closed:
+            await asyncio.sleep(0)
+            return
         await self._safe_run_in_thread(self._sync_connection.close)
 
     @override
