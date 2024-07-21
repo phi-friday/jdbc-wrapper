@@ -2,7 +2,7 @@
 # pyright: reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -28,10 +28,41 @@ if TYPE_CHECKING:
     from sqlalchemy.engine.url import URL
 
 
+def _date_to_datetime(date_value: str | date | datetime) -> datetime:
+    if isinstance(date_value, str):
+        return datetime.fromisoformat(date_value)
+    if isinstance(date_value, datetime):
+        return date_value
+    return datetime(date_value.year, date_value.month, date_value.day)  # noqa: DTZ001
+
+
+def _date_to_date(date_value: str | date | datetime) -> date:
+    if isinstance(date_value, str):
+        return date.fromisoformat(date_value)
+    if isinstance(date_value, datetime):
+        return date_value.date()
+    return date_value
+
+
+def _date_to_time(date_value: str | time | datetime) -> time:
+    if isinstance(date_value, str):
+        return time.fromisoformat(date_value)
+    if isinstance(date_value, datetime):
+        return date_value.time()
+    return date_value
+
+
+def _as_iso_format(date_value: date | datetime | time) -> str:
+    if isinstance(date_value, (date, time)):
+        return date_value.isoformat()
+    error_msg = f"Expected date or time, got {type(date_value)}"
+    raise TypeError(error_msg)
+
+
 class SQJDBCDateTime(DATETIME):
     @override
     def bind_processor(self, dialect: Dialect) -> Callable[[Any], Any] | None:
-        return None
+        return _as_iso_format
 
     @override
     def result_processor(
@@ -40,34 +71,28 @@ class SQJDBCDateTime(DATETIME):
         return _date_to_datetime
 
 
-def _date_to_datetime(date_value: date | datetime) -> datetime:
-    if isinstance(date_value, datetime):
-        return date_value
-    return datetime(date_value.year, date_value.month, date_value.day)  # noqa: DTZ001
-
-
 class SQJDBCDate(DATE):
     @override
     def bind_processor(self, dialect: Dialect) -> Callable[[Any], Any] | None:
-        return None
+        return _as_iso_format
 
     @override
     def result_processor(
         self, dialect: Dialect, coltype: Any
     ) -> Callable[[Any], Any] | None:
-        return None
+        return _date_to_date
 
 
 class SQJDBCTime(TIME):
     @override
     def bind_processor(self, dialect: Dialect) -> Callable[[Any], Any] | None:
-        return None
+        return _as_iso_format
 
     @override
     def result_processor(
         self, dialect: Dialect, coltype: Any
     ) -> Callable[[Any], Any] | None:
-        return None
+        return _date_to_time
 
 
 class SQJDBCDialect(JDBCConnector, SQLiteDialect):

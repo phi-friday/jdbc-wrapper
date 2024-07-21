@@ -189,6 +189,18 @@ def url(
     module_dir = temp_dir / "jdbc_modules"
     module_dir.mkdir(exist_ok=True)
     if worker_id == "master":
+        modules = os.environ.get("DATABASE_JDBC_MODULES", "")
+        driver = os.environ.get("DATABASE_JDBC_DRIVER", "")
+        if modules and driver:
+            return url_without_query.set(
+                query={
+                    "jdbc_modules": [
+                        str(Path(x.strip()).resolve()) for x in modules.split(",")
+                    ],
+                    "jdbc_driver": driver.strip(),
+                }
+            )
+
         driver, modules = load_jdbc_modules(backend, module_dir)
         return url_without_query.set(
             query={"jdbc_modules": tuple(map(str, modules)), "jdbc_driver": driver}
@@ -204,7 +216,14 @@ def url(
             return url_without_query.set(
                 query={"jdbc_modules": modules, "jdbc_driver": loader.default_driver}
             )
-        driver, modules = load_jdbc_modules(backend, module_dir)
+
+        modules = os.environ.get("DATABASE_JDBC_MODULES", "")
+        driver = os.environ.get("DATABASE_JDBC_DRIVER", "")
+        if modules and driver:
+            modules = [str(Path(x.strip()).resolve()) for x in modules.split(",")]
+            driver = driver.strip()
+        else:
+            driver, modules = load_jdbc_modules(backend, module_dir)
         modules = list(map(str, modules))
         with module_file.open("w+") as f:
             json.dump(modules, f)

@@ -203,14 +203,18 @@ class DatePipeline(BasePipeline[date]):
 
     @override
     def java_to_python(self, value: Any) -> date:
+        if isinstance(value, (str, jpype.JString, jpype.java.lang.String)):
+            return date.fromisoformat(value)
         if isinstance(value, jpype.java.lang.Object):
             return _get_python_object(value)
-        if isinstance(value, str):
-            return date.fromisoformat(value)
         return value
 
     @override
-    def python_to_java(self, value: date) -> Any:
+    def python_to_java(self, value: Any) -> Any:
+        if isinstance(value, datetime):
+            return value.date().isoformat()
+        if isinstance(value, date):
+            return value.isoformat()
         return value
 
 
@@ -220,14 +224,18 @@ class TimePipeline(BasePipeline[time]):
 
     @override
     def java_to_python(self, value: Any) -> time:
+        if isinstance(value, (str, jpype.JString, jpype.java.lang.String)):
+            return time.fromisoformat(value)
         if isinstance(value, jpype.java.lang.Object):
             return _get_python_object(value)
-        if isinstance(value, str):
-            return time.fromisoformat(value)
         return value
 
     @override
-    def python_to_java(self, value: time) -> Any:
+    def python_to_java(self, value: Any) -> Any:
+        if isinstance(value, datetime):
+            return value.time().isoformat()
+        if isinstance(value, time):
+            return value.isoformat()
         return value
 
 
@@ -237,14 +245,18 @@ class DatetimePipeline(BasePipeline[datetime]):
 
     @override
     def java_to_python(self, value: Any) -> datetime:
+        if isinstance(value, (str, jpype.JString, jpype.java.lang.String)):
+            return datetime.fromisoformat(value)
         if isinstance(value, jpype.java.lang.Object):
             return _get_python_object(value)
-        if isinstance(value, str):
-            return datetime.fromisoformat(value)
         return value
 
     @override
-    def python_to_java(self, value: datetime) -> Any:
+    def python_to_java(self, value: Any) -> Any:
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, date):
+            return datetime(value.year, value.month, value.day).isoformat()  # noqa: DTZ001
         return value
 
 

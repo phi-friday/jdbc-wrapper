@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, time
 from decimal import Decimal as _Decimal
+from itertools import chain
 from typing import TYPE_CHECKING, Any, Generic, cast
 
 import jpype
@@ -153,11 +154,11 @@ class WrappedJDBCType(Generic[_J, _T]):
         return get_type_pipeline(self._python_type)
 
     @wrap_errors
-    def get_value(self, result_set: ResultSet, index: int, is_callable: bool) -> _T:  # noqa: FBT001
+    def get(self, result_set: ResultSet, index: int, is_callable: bool) -> _T:  # noqa: FBT001
         return self._jdbc_type.get(result_set, index, is_callable)
 
     @wrap_errors
-    def set_value(self, statement: _JDBCStmt, index: int, value: _T) -> Any:
+    def set(self, statement: _JDBCStmt, index: int, value: _T) -> Any:
         return self._jdbc_type.set(statement, index, value)
 
     @override
@@ -234,6 +235,27 @@ _QuotedName = JDBCType(
 QuotedName = WrappedJDBCType(_QuotedName, quoted_name)
 ### declare:: end
 
+_time_codes = frozenset(
+    x.type_code for x in (Time, Time_with_timezone) if x.type_code is not None
+)
+_time_names = frozenset(
+    x.name for x in (Time, Time_with_timezone) if x.name is not None
+)
+_date_codes = frozenset(x.type_code for x in (Date,) if x.type_code is not None)
+_date_names = frozenset(x.name for x in (Date,) if x.name is not None)
+_datetime_codes = frozenset(
+    x.type_code for x in (Timestamp, Timestamp_with_timezone) if x.type_code is not None
+)
+_datetime_names = frozenset(
+    chain(
+        (x.name for x in (Timestamp, Timestamp_with_timezone) if x.name is not None),
+        ("DATETIME",),
+    )
+)
+_date_all_codes = frozenset(chain(_time_codes, _date_codes, _datetime_codes))
+_date_all_names = frozenset(chain(_time_names, _date_names, _datetime_names))
+_date_types = frozenset((datetime, date, time))
+
 
 def find_type_code(description: Description | int | str | None) -> int | None:
     if isinstance(description, tuple):
@@ -259,6 +281,46 @@ def _init_types() -> None:
         return
 
     jpype_dbapi2._default_setters[sa.quoted_name] = _QuotedName  # noqa: SLF001
+
+
+class ParseStringToTime:
+    def __init__(self, type_code: int, type_name: str) -> None:
+        self._type_code = type_code
+        self._type_name = type_name
+
+    def get(self, rs: ResultSet, column: int, st: bool) -> Any:  # noqa: FBT001
+        value = String.get(rs, column, st)
+        value = str(value)
+        if self._type_name in _datetime_names or self._type_code in _datetime_codes:
+            return datetime.fromisoformat(value)
+        if self._type_name in _date_names or self._type_code in _date_codes:
+            return date.fromisoformat(value)
+        if self._type_name in _time_names or self._type_code in _time_codes:
+            return time.fromisoformat(value)
+        return value
+
+
+def getter(cx: jpype_dbapi2.Connection, meta: _JDBCMeta, index: int) -> Any:
+    type_name = meta.getColumnTypeName(index + 1)
+    type_code = meta.getColumnType(index + 1)
+    if type_name in _date_all_names or type_code in _date_all_names:
+        return ParseStringToTime(type_code, type_name)
+    return jpype_dbapi2.GETTERS_BY_NAME(cx, meta, index)
+
+
+def setter(
+    cx: jpype_dbapi2.Connection, meta: _JDBCMeta, index: int, python_type: type[Any]
+) -> Any:
+    try:
+        type_code = meta.getColumnType(index + 1)
+    except AttributeError:
+        use_string = python_type in _date_types
+    else:
+        use_string = type_code in _date_all_codes
+
+    if use_string:
+        return String
+    return jpype_dbapi2.SETTERS_BY_TYPE(cx, meta, index, python_type)
 
 
 jpype._jinit.registerJVMInitializer(_init_types)  # noqa: SLF001

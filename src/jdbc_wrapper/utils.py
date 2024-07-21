@@ -12,7 +12,7 @@ from jpype import dbapi2 as jpype_dbapi2
 from typing_extensions import TypeGuard, TypeVar
 
 from jdbc_wrapper import const as jdbc_wrapper_const
-from jdbc_wrapper import exceptions
+from jdbc_wrapper import exceptions, types
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, MutableSequence
@@ -164,8 +164,8 @@ class Java:
             jdbc_connection,
             adapters=adapters,
             converters=converters,
-            getters=jpype_dbapi2.GETTERS_BY_TYPE,
-            setters=jpype_dbapi2.SETTERS_BY_TYPE,
+            getters=types.getter,
+            setters=types.setter,
         )
 
     @staticmethod
