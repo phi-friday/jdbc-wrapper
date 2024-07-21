@@ -1,10 +1,10 @@
 name: postgresql
 
 on:
-  workflow_call: 
+  workflow_call:
     inputs:
       python-version:
-        description: 'Python version'
+        description: "Python version"
         required: true
         type: string
 
@@ -25,7 +25,7 @@ jobs:
         if: steps.load-drivers.outputs.cache-hit != 'true'
         run: |
           wget https://jdbc.postgresql.org/download/postgresql-42.7.3.jar -O postgresql.jar
-      
+
       - name: Cache JDBC drivers
         if: steps.load-drivers.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -33,7 +33,6 @@ jobs:
           key: jdbc-drivers-postgresql
           path: |
             postgresql.jar
-
 
   run-test:
     runs-on: ubuntu-latest

@@ -1,10 +1,10 @@
 name: sqlite
 
 on:
-  workflow_call: 
+  workflow_call:
     inputs:
       python-version:
-        description: 'Python version'
+        description: "Python version"
         required: true
         type: string
 
@@ -27,7 +27,7 @@ jobs:
         run: |
           wget https://github.com/xerial/sqlite-jdbc/releases/download/3.46.0.0/sqlite-jdbc-3.46.0.0.jar -O sqlite.jar
           wget https://repo1.maven.org/maven2/org/slf4j/slf4j-api/2.0.13/slf4j-api-2.0.13.jar -O slf4j.jar
-      
+
       - name: Cache JDBC drivers
         if: steps.load-drivers.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Load JDBC drivers
         uses: actions/cache/restore@v4
         with:
