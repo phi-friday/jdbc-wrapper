@@ -96,16 +96,20 @@ def test_autocommit(sync_raw_connection, sync_session, model):
 
     fetch = sync_session.execute(select_stmt, select_param)
     row = fetch.one()
-    assert row == (
-        new.name,
-        new.float,
-        new.decimal,
-        new.datetime,
-        new.date,
-        new.time,
-        new.boolean,
-        new.unique,
-    )
+    for x, y in zip(
+        row,
+        (
+            new.name,
+            new.float,
+            new.decimal,
+            new.datetime,
+            new.date,
+            new.time,
+            new.boolean,
+            new.unique,
+        ),
+    ):
+        assert x == y
 
 
 def test_fetchone(sync_cursor, model, records):
@@ -261,16 +265,20 @@ async def test_autocommit_async(async_raw_connection, async_session, model):
 
     fetch = await async_session.execute(select_stmt, select_param)
     row = fetch.one()
-    assert row == (
-        new.name,
-        new.float,
-        new.decimal,
-        new.datetime,
-        new.date,
-        new.time,
-        new.boolean,
-        new.unique,
-    )
+    for x, y in zip(
+        row,
+        (
+            new.name,
+            new.float,
+            new.decimal,
+            new.datetime,
+            new.date,
+            new.time,
+            new.boolean,
+            new.unique,
+        ),
+    ):
+        assert x == y
 
 
 async def test_fetchone_async(async_cursor, model, records):

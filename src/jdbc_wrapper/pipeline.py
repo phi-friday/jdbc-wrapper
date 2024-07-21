@@ -13,6 +13,7 @@ import jpype
 from typing_extensions import TypeVar, override
 
 from jdbc_wrapper.abc import TypePipeline
+from jdbc_wrapper.types import DateStr
 
 try:
     from sqlalchemy import quoted_name
@@ -212,10 +213,10 @@ class DatePipeline(BasePipeline[date]):
     @override
     def python_to_java(self, value: Any) -> Any:
         if isinstance(value, datetime):
-            return value.date().isoformat()
+            value = value.date().isoformat()
         if isinstance(value, date):
-            return value.isoformat()
-        return value
+            value = value.isoformat()
+        return DateStr(value, date)
 
 
 class TimePipeline(BasePipeline[time]):
@@ -233,10 +234,10 @@ class TimePipeline(BasePipeline[time]):
     @override
     def python_to_java(self, value: Any) -> Any:
         if isinstance(value, datetime):
-            return value.time().isoformat()
+            value = value.time().isoformat()
         if isinstance(value, time):
-            return value.isoformat()
-        return value
+            value = value.isoformat()
+        return DateStr(value, time)
 
 
 class DatetimePipeline(BasePipeline[datetime]):
@@ -254,10 +255,10 @@ class DatetimePipeline(BasePipeline[datetime]):
     @override
     def python_to_java(self, value: Any) -> Any:
         if isinstance(value, datetime):
-            return value.isoformat()
+            value = value.isoformat()
         if isinstance(value, date):
-            return datetime(value.year, value.month, value.day).isoformat()  # noqa: DTZ001
-        return value
+            value = datetime(value.year, value.month, value.day).isoformat()  # noqa: DTZ001
+        return DateStr(value, datetime)
 
 
 class DecimalPipeline(BasePipeline[Decimal]):

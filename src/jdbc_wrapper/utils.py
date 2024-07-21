@@ -159,13 +159,14 @@ class Java:
             info.setProperty(key, value)
 
         jdbc_connection = jdbc_driver.connect(dsn, info)
+        use_dsn = types.UseDsn(dsn)
         return catch_errors(
             jpype_dbapi2.Connection,
             jdbc_connection,
             adapters=adapters,
             converters=converters,
-            getters=types.getter,
-            setters=types.setter,
+            getters=use_dsn.getter,
+            setters=use_dsn.setter,
         )
 
     @staticmethod

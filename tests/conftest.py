@@ -54,7 +54,9 @@ class Table(Base, kw_only=True):
     )
     datetime: Mapped[datetime_class] = mapped_column(
         sa.DateTime(timezone=False),
-        default_factory=lambda: datetime_class.now(timezone.utc).replace(tzinfo=None),
+        default_factory=lambda: (x := datetime_class.now(timezone.utc)).replace(
+            tzinfo=None, microsecond=x.microsecond // 1000 * 1000
+        ),
     )
     date: Mapped[date_class] = mapped_column(
         sa.Date(), default_factory=lambda: datetime_class.now(timezone.utc).date()
