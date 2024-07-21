@@ -1,0 +1,80 @@
+name: sqlite
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - "**.py"
+      - ".github/workflows/check*.yaml"
+  pull_request:
+    branches: [dev]
+    paths:
+      - "**.py"
+      - ".github/workflows/check*.yaml"
+
+jobs:
+  load-driver:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Load JDBC drivers
+        id: load-drivers
+        uses: actions/cache/restore@v4
+        with:
+          key: jdbc-drivers-sqlite
+          path: |
+            sqlite.jar
+            slf4j.jar
+
+      - shell: bash
+        if: steps.load-drivers.outputs.cache-hit != 'true'
+        run: |
+          wget https://github.com/xerial/sqlite-jdbc/releases/download/3.46.0.0/sqlite-jdbc-3.46.0.0.jar -O sqlite.jar
+          wget https://repo1.maven.org/maven2/org/slf4j/slf4j-api/2.0.13/slf4j-api-2.0.13.jar -O slf4j.jar
+      
+      - name: Cache JDBC drivers
+        if: steps.load-drivers.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: jdbc-drivers-sqlite
+          path: |
+            sqlite.jar
+            slf4j.jar
+
+  run-test:
+    runs-on: ubuntu-latest
+    needs: load-driver
+
+    strategy:
+      matrix:
+        python-version: ["3.12"] #["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Load JDBC drivers
+        uses: actions/cache/restore@v4
+        with:
+          key: jdbc-drivers-sqlite
+          path: |
+            sqlite.jar
+            slf4j.jar
+
+      - name: Install rye
+        uses: phi-friday/install-rye@v1.5
+        id: install-rye
+        with:
+          python_version: ${{ matrix.python-version }}
+          use_uv: true
+
+      - name: Install dependencies
+        run: |
+          rye sync --features test
+
+      - name: Test with pytest
+        run: |
+          rye run pytest -m "not local(database='sqlite')"
+        env:
+          DATABASE_URL: sqlite+jdbc_wrapper://./database.db
+          DATABASE_JDBC_DRIVER: org.sqlite.JDBC
+          DATABASE_JDBC_MODULES: sqlite.jar,slf4j.jar

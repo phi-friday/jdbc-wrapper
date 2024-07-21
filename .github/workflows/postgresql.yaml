@@ -1,0 +1,91 @@
+name: postgresql
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - "**.py"
+      - ".github/workflows/check*.yaml"
+  pull_request:
+    branches: [dev]
+    paths:
+      - "**.py"
+      - ".github/workflows/check*.yaml"
+
+jobs:
+  load-driver:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Load JDBC drivers
+        id: load-drivers
+        uses: actions/cache/restore@v4
+        with:
+          key: jdbc-drivers-postgresql
+          path: |
+            postgresql.jar
+
+      - shell: bash
+        if: steps.load-drivers.outputs.cache-hit != 'true'
+        run: |
+          wget https://jdbc.postgresql.org/download/postgresql-42.7.3.jar -O postgresql.jar
+      
+      - name: Cache JDBC drivers
+        if: steps.load-drivers.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: jdbc-drivers-postgresql
+          path: |
+            postgresql.jar
+
+
+  run-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgresql:
+        image: postgres:15-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    strategy:
+      matrix:
+        python-version: ["3.12"] #["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load JDBC drivers
+        id: load-drivers
+        uses: actions/cache/restore@v4
+        with:
+          key: jdbc-drivers-postgresql
+          path: |
+            postgresql.jar
+
+      - name: Install rye
+        uses: phi-friday/install-rye@v1.5
+        id: install-rye
+        with:
+          python_version: ${{ matrix.python-version }}
+          use_uv: true
+
+      - name: Install dependencies
+        run: |
+          rye sync --features test
+
+      - name: Test with pytest
+        run: |
+          rye run pytest -m "not local(database='postgresql')"
+        env:
+          DATABASE_URL: "postgresql+jdbc_wrapper://postgres:postgres@localhost:5432/postgres"
+          DATABASE_JDBC_DRIVER: org.postgresql.Driver
+          DATABASE_JDBC_MODULES: postgresql.jar

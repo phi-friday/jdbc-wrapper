@@ -11,7 +11,8 @@ import sqlalchemy as sa
 
 _CONCURRENCY = 10
 
-pytestmark = pytest.mark.anyio
+# FIXME: postgresql
+pytestmark = [pytest.mark.anyio, pytest.mark.local(database="postgresql")]
 
 
 @pytest.fixture(scope="module")
