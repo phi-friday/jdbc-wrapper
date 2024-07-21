@@ -140,7 +140,7 @@ async def test_rowcount_async(async_cursor, model, records):
     assert async_cursor.rowcount == size
 
 
-async def test_description_async(async_cursor, model):
+async def test_description_async(async_cursor, model, records):  # noqa: ARG001
     assert async_cursor.description is None
     select_stmt = sa.select(model).limit(sa.bindparam("limit"))
     await async_cursor.execute(select_stmt, {"limit": 1})

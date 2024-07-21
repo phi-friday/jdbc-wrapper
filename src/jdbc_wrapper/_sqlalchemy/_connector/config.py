@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableMapping
 
-    from sqlalchemy.engine.interfaces import BindTyping, Dialect
+    from sqlalchemy.engine.interfaces import BindTyping, Dialect, ExecutionContext
     from sqlalchemy.sql.compiler import InsertmanyvaluesSentinelOpts
     from sqlalchemy.types import TypeEngine
 
@@ -309,6 +309,9 @@ class ConnectorSettings:
     has_terminate: bool = unset
     """Whether or not this dialect has a separate "terminate" implementation
     that does not block or require awaiting."""
+
+    execution_ctx_cls: type[ExecutionContext] = unset
+    """a :class:`.ExecutionContext` class used to handle statement execution"""
 
     def __post_init__(self) -> None:
         if self.inherit is not None:

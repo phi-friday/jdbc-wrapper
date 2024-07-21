@@ -2,11 +2,13 @@
 # pyright: reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
+from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy.dialects.sqlite.base import SQLiteDialect
+from sqlalchemy.dialects.sqlite.base import DATE, DATETIME, TIME, SQLiteDialect
 from sqlalchemy.engine.url import URL
+from sqlalchemy.types import Date, DateTime, Time
 from sqlalchemy.util import memoized_property
 from typing_extensions import override
 
@@ -18,16 +20,64 @@ from jdbc_wrapper._sqlalchemy.connector import (
 from jdbc_wrapper.const import SQLITE_JDBC_PREFIX
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
     from types import ModuleType
 
     from sqlalchemy.engine import Connection
+    from sqlalchemy.engine.interfaces import Dialect
     from sqlalchemy.engine.url import URL
+
+
+class SQJDBCDateTime(DATETIME):
+    @override
+    def bind_processor(self, dialect: Dialect) -> Callable[[Any], Any] | None:
+        return None
+
+    @override
+    def result_processor(
+        self, dialect: Dialect, coltype: Any
+    ) -> Callable[[Any], Any] | None:
+        return _date_to_datetime
+
+
+def _date_to_datetime(date_value: date | datetime) -> datetime:
+    if isinstance(date_value, datetime):
+        return date_value
+    return datetime(date_value.year, date_value.month, date_value.day)  # noqa: DTZ001
+
+
+class SQJDBCDate(DATE):
+    @override
+    def bind_processor(self, dialect: Dialect) -> Callable[[Any], Any] | None:
+        return None
+
+    @override
+    def result_processor(
+        self, dialect: Dialect, coltype: Any
+    ) -> Callable[[Any], Any] | None:
+        return None
+
+
+class SQJDBCTime(TIME):
+    @override
+    def bind_processor(self, dialect: Dialect) -> Callable[[Any], Any] | None:
+        return None
+
+    @override
+    def result_processor(
+        self, dialect: Dialect, coltype: Any
+    ) -> Callable[[Any], Any] | None:
+        return None
 
 
 class SQJDBCDialect(JDBCConnector, SQLiteDialect):
     settings = ConnectorSettings(
-        name="sqlite", driver="jdbc_wrapper", inherit=SQLiteDialect, is_async=False
+        name="sqlite",
+        driver="jdbc_wrapper",
+        inherit=SQLiteDialect,
+        colspecs=dict(SQLiteDialect.colspecs)
+        | {DateTime: SQJDBCDateTime, Date: SQJDBCDate, Time: SQJDBCTime},
+        is_async=False,
     )
 
     @property

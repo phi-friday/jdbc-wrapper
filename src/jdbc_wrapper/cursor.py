@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Generator, Iterator, Mapping, Sequence
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Generic, Literal
+from typing import TYPE_CHECKING, Any, Generic, Literal, Protocol
 
 from typing_extensions import Self, TypeVar, override
 
 from jdbc_wrapper.abc import ConnectionABC, CursorABC
 from jdbc_wrapper.utils import statement_to_query, wrap_errors
+
+_T = TypeVar("_T", bound="Sequence[Any] | Mapping[str, Any]")
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -17,8 +19,13 @@ if TYPE_CHECKING:
 
     from jdbc_wrapper.types import Description, Query
 
+    class Ensure(Protocol[_T]):
+        def __call__(self, x: _T) -> _T: ...
+
+
 __all__ = []
 
+_T_co = TypeVar("_T_co", covariant=True, bound="Sequence[Any] | Mapping[str, Any]")
 _R_co = TypeVar("_R_co", covariant=True, bound=tuple[Any, ...], default=tuple[Any, ...])
 _R2 = TypeVar("_R2", bound=tuple[Any, ...])
 
@@ -79,11 +86,12 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
         operation: str | Executable,
         parameters: Sequence[Any] | Mapping[str, Any] | None = None,
     ) -> CursorABC[Any]:
-        if isinstance(parameters, Mapping):
-            parameters = list(parameters.values())
+        operation, factory = self._ensure_operation(operation, parameters)
+        if parameters:
+            parameters = factory(parameters)
+            parameters = self._ensure_parameter(parameters or [])
 
-        operation = self._ensure_operation(operation)
-        self._jpype_cursor.execute(operation, list(parameters) if parameters else None)
+        self._jpype_cursor.execute(operation, parameters)
         return self
 
     @wrap_errors
@@ -93,8 +101,15 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
         operation: str | Executable,
         seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]],
     ) -> Self:
-        operation = self._ensure_operation(operation)
-        seq_of_parameters = list(self._ensure_parameters(seq_of_parameters))
+        if seq_of_parameters:
+            operation, factory = self._ensure_operation(operation, seq_of_parameters[0])
+            gen_seq_of_parameters = (factory(x) for x in seq_of_parameters)
+        else:
+            operation, factory = self._ensure_operation(operation, None)
+            parameters = factory({})
+            gen_seq_of_parameters = (parameters for _ in range(len(seq_of_parameters)))
+
+        seq_of_parameters = list(self._ensure_parameters(gen_seq_of_parameters))
         self._jpype_cursor.executemany(operation, seq_of_parameters)
         return self
 
@@ -209,21 +224,58 @@ class Cursor(CursorABC[_R_co], Generic[_R_co]):
         with suppress(Exception):
             self.close()
 
-    def _ensure_operation(self, operation: str | Executable) -> str:
+    def _ensure_operation(
+        self,
+        operation: str | Executable,
+        params: Sequence[Any] | Mapping[str, Any] | None,
+    ) -> tuple[str, Ensure[Any]]:
         if isinstance(operation, str):
-            return operation
+            return operation, _return_self
+
+        if params is not None and not isinstance(params, Mapping):
+            error_msg = f"Params must be a mapping for `{operation!s}`"
+            raise TypeError(error_msg)
 
         try:
-            return statement_to_query(operation, self.connection._dsn)  # noqa: SLF001
+            stmt, compiled_params = statement_to_query(operation, self.connection._dsn)  # noqa: SLF001
         except TypeError as exc:
             error_msg = f"Failed to convert `{operation!s}` to query"
             raise TypeError(error_msg) from exc
 
+        factory = _combine_params_factory(compiled_params)
+        return stmt, factory
+
     def _ensure_parameters(
-        self, seq_of_parameters: Sequence[Sequence[Any]] | Sequence[Mapping[str, Any]]
+        self,
+        seq_of_parameters: Generator[Sequence[Any], None, None]
+        | Generator[Mapping[str, Any], None, None],
     ) -> Generator[Sequence[Any], None, None]:
         for seq_or_parameter in seq_of_parameters:
-            if isinstance(seq_or_parameter, Mapping):
-                yield tuple(seq_or_parameter.values())
-            else:
-                yield seq_or_parameter
+            yield self._ensure_parameter(seq_or_parameter)
+
+    def _ensure_parameter(
+        self, parameter: Sequence[Any] | Mapping[str, Any]
+    ) -> Sequence[Any]:
+        if isinstance(parameter, Mapping):
+            return tuple(parameter.values())
+        return parameter
+
+
+def _return_self(x: _T_co) -> _T_co:
+    return x
+
+
+def _combine_params_factory(params: _T_co) -> Ensure[_T_co]:
+    if not isinstance(params, Mapping):
+        return _return_self
+
+    origin = dict(params)
+
+    def _combine_params(x: Mapping[str, Any]) -> Mapping[str, Any]:
+        new = dict(origin)
+        for key in new:
+            if key in x:
+                new[key] = x[key]
+        return new
+
+    return _combine_params  # pyright: ignore[reportReturnType]

@@ -294,11 +294,12 @@ def is_sqlalchemy_executable(statement: Any) -> TypeGuard[ExecutableAndCompiled]
     return isinstance(statement, Executable) and isinstance(statement, CompilerElement)
 
 
-def statement_to_query(statement: Any, dsn: str) -> str:
+def statement_to_query(statement: Any, dsn: str) -> tuple[str, dict[str, Any]]:
     if not is_sqlalchemy_executable(statement):
         error_msg = "Statement is not an SQLAlchemy executable."
         raise TypeError(error_msg)
 
     connector_type = find_connector_type(dsn)
     connector = connector_type()
-    return str(statement.compile(dialect=connector))
+    compiled = statement.compile(dialect=connector)
+    return str(compiled), dict(compiled.params or {})

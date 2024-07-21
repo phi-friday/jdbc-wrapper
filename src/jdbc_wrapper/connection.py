@@ -22,7 +22,7 @@ __all__ = []
 
 
 class Connection(ConnectionABC[Cursor[Any]]):
-    __slots__ = ("_jpype_connection",)
+    __slots__ = ("_jpype_connection", "_jdbc_dsn")
 
     Error = exceptions.Error
     Warning = exceptions.Warning
@@ -34,8 +34,9 @@ class Connection(ConnectionABC[Cursor[Any]]):
     ProgrammingError = exceptions.ProgrammingError
     NotsupportedError = exceptions.NotSupportedError
 
-    def __init__(self, jpype_connection: jpype_dbapi2.Connection) -> None:
+    def __init__(self, jpype_connection: jpype_dbapi2.Connection, dsn: str) -> None:
         self._jpype_connection = jpype_connection
+        self._jdbc_dsn = dsn
 
     @wrap_errors
     @override
@@ -98,7 +99,7 @@ class Connection(ConnectionABC[Cursor[Any]]):
     @property
     @override
     def _dsn(self) -> str:
-        return str(self._jpype_connection._jcx.getURL())  # noqa: SLF001
+        return self._jdbc_dsn
 
 
 def connect(
@@ -126,4 +127,4 @@ def connect(
         converters=converters,
     )
 
-    return Connection(jpype_connection)
+    return Connection(jpype_connection, dsn)
