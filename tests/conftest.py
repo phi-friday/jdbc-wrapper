@@ -6,7 +6,9 @@ import re
 import shutil
 import uuid
 from collections.abc import AsyncGenerator, Generator
+from datetime import date as date_class
 from datetime import datetime as datetime_class
+from datetime import time as time_class
 from datetime import timezone
 from decimal import Decimal
 from pathlib import Path
@@ -45,11 +47,28 @@ class Table(Base, kw_only=True):
     metadata = metadata
 
     id: Mapped[int] = mapped_column(init=False, primary_key=True, autoincrement=True)
-    name: Mapped[str]
-    float: Mapped[float]
-    decimal: Mapped[Decimal] = mapped_column(sa.Numeric(precision=10, scale=2))
-    datetime: Mapped[datetime_class] = mapped_column(sa.DateTime(timezone=False))
-    boolean: Mapped[bool]
+    name: Mapped[str] = mapped_column(default="test")
+    float: Mapped[float] = mapped_column(default_factory=lambda: 1.1)
+    decimal: Mapped[Decimal] = mapped_column(
+        sa.Numeric(precision=10, scale=2), default_factory=lambda: Decimal("2.2")
+    )
+    datetime: Mapped[datetime_class] = mapped_column(
+        sa.DateTime(timezone=False),
+        default_factory=lambda: datetime_class.now(timezone.utc).replace(tzinfo=None),
+    )
+    date: Mapped[date_class] = mapped_column(
+        sa.Date(), default_factory=lambda: datetime_class.now(timezone.utc).date()
+    )
+    time: Mapped[time_class] = mapped_column(
+        sa.Time(timezone=False),
+        default_factory=lambda: datetime_class.now(timezone.utc)
+        .time()
+        .replace(tzinfo=None, microsecond=0),
+    )
+    boolean: Mapped[bool] = mapped_column(default=True)
+    unique: Mapped[str] = mapped_column(
+        sa.String(255), unique=True, default_factory=lambda: uuid.uuid4().hex
+    )
 
 
 def _create_temp_dir() -> Path:
@@ -257,16 +276,7 @@ def model(table) -> type[Table]:  # type: ignore # noqa: ARG001
 
 @pytest.fixture(scope="session")
 def records(sync_engine: sa.engine.Engine, model: type[Table]) -> list[Table]:
-    records = [
-        model(
-            name="test",
-            float=x,
-            decimal=Decimal(f"{x}.{x}"),
-            datetime=datetime_class.now(timezone.utc),
-            boolean=True,
-        )
-        for x in range(10)
-    ]
+    records = [model(float=x, decimal=Decimal(f"{x}.{x}")) for x in range(10)]
     with Session(sync_engine) as session:
         session.add_all(records)
         session.commit()

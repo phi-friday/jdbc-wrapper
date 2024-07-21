@@ -2,10 +2,6 @@
 # pyright: reportUnknownParameterType=false
 from __future__ import annotations
 
-from datetime import datetime as datetime_class
-from datetime import timezone
-from decimal import Decimal
-
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,13 +11,7 @@ pytestmark = pytest.mark.anyio
 
 
 def test_rollback(sync_session, model):
-    new = model(
-        name="test",
-        float=1.0,
-        decimal=Decimal("1.1"),
-        datetime=datetime_class.now(timezone.utc),
-        boolean=True,
-    )
+    new = model()
     sync_session.add(new)
     sync_session.flush()
     sync_session.refresh(new)
@@ -32,13 +22,7 @@ def test_rollback(sync_session, model):
 
 
 def test_no_commit(sync_engine, model):
-    new = model(
-        name="test",
-        float=1.0,
-        decimal=Decimal("1.1"),
-        datetime=datetime_class.now(timezone.utc),
-        boolean=True,
-    )
+    new = model()
     with Session(sync_engine) as session:
         session.add(new)
         session.flush()
@@ -51,13 +35,7 @@ def test_no_commit(sync_engine, model):
 
 
 def test_commit(sync_engine, model):
-    new = model(
-        name="test",
-        float=1.0,
-        decimal=Decimal("1.1"),
-        datetime=datetime_class.now(timezone.utc),
-        boolean=True,
-    )
+    new = model()
     with Session(sync_engine) as session:
         session.add(new)
         session.flush()
@@ -68,62 +46,67 @@ def test_commit(sync_engine, model):
         maybe = session.get(model, new_id)
         assert maybe is not None
 
-    assert new.id == maybe.id
-    assert new.name == maybe.name
-    assert new.float == maybe.float
-    assert new.decimal == maybe.decimal
-    assert new.datetime == maybe.datetime
-    assert new.boolean is maybe.boolean
+    for key in model.__dataclass_fields__:
+        assert getattr(new, key) == getattr(maybe, key)
 
 
 def test_autocommit(sync_raw_connection, sync_session, model):
-    new = model(
-        name="test",
-        float=1.0,
-        decimal=Decimal("1.1"),
-        datetime=datetime_class.now(timezone.utc).replace(tzinfo=None),
-        boolean=True,
-    )
-
-    param = {
+    new = model()
+    insert_param = {
         "name": new.name,
         "float": new.float,
         "decimal": new.decimal,
         "datetime": new.datetime,
+        "date": new.date,
+        "time": new.time,
         "boolean": new.boolean,
+        "unique": new.unique,
     }
+    select_param = {"unique": new.unique}
     insert_stmt = sa.insert(model).values(
         name=sa.bindparam("name"),
         float=sa.bindparam("float"),
         decimal=sa.bindparam("decimal"),
         datetime=sa.bindparam("datetime"),
+        date=sa.bindparam("date"),
+        time=sa.bindparam("time"),
         boolean=sa.bindparam("boolean"),
+        unique=sa.bindparam("unique"),
     )
     select_stmt = (
         sa.select(model)
         .with_only_columns(
-            model.name, model.float, model.decimal, model.datetime, model.boolean
+            model.name,
+            model.float,
+            model.decimal,
+            model.datetime,
+            model.date,
+            model.time,
+            model.boolean,
+            model.unique,
         )
-        .where(
-            model.name == sa.bindparam("name", type_=sa.String()),
-            model.float == sa.bindparam("float", type_=sa.Float()),
-            model.decimal == sa.bindparam("decimal", type_=sa.Numeric()),
-            model.datetime
-            == sa.bindparam("datetime", type_=sa.DateTime(timezone=False)),
-            model.boolean == sa.bindparam("boolean", type_=sa.Boolean()),
-        )
+        .where(model.unique == sa.bindparam("unique", type_=sa.String()))
         .order_by(model.datetime.desc())
     )
 
     sync_raw_connection.autocommit = True
     assert sync_raw_connection.autocommit is True
     with sync_raw_connection.cursor() as cursor:
-        cursor.execute(insert_stmt, param)
+        cursor.execute(insert_stmt, insert_param)
         cursor.fetchall()
 
-    fetch = sync_session.execute(select_stmt, param)
+    fetch = sync_session.execute(select_stmt, select_param)
     row = fetch.one()
-    assert row == (new.name, new.float, new.decimal, new.datetime, new.boolean)
+    assert row == (
+        new.name,
+        new.float,
+        new.decimal,
+        new.datetime,
+        new.date,
+        new.time,
+        new.boolean,
+        new.unique,
+    )
 
 
 def test_fetchone(sync_cursor, model, records):
@@ -138,7 +121,10 @@ def test_fetchone(sync_cursor, model, records):
         records[0].float,
         records[0].decimal,
         records[0].datetime,
+        records[0].date,
+        records[0].time,
         records[0].boolean,
+        records[0].unique,
     )
 
 
@@ -166,7 +152,10 @@ def test_executemany(sync_cursor, model, records):
         float=sa.bindparam("float"),
         decimal=sa.bindparam("decimal"),
         datetime=sa.bindparam("datetime"),
+        date=sa.bindparam("date"),
+        time=sa.bindparam("time"),
         boolean=sa.bindparam("boolean"),
+        unique=sa.bindparam("unique"),
     )
     values = [
         {
@@ -174,9 +163,12 @@ def test_executemany(sync_cursor, model, records):
             "float": x.float,
             "decimal": x.decimal,
             "datetime": x.datetime,
+            "date": x.date,
+            "time": x.time,
             "boolean": x.boolean,
+            "unique": f"{x.unique}_{idx}",
         }
-        for x in records
+        for idx, x in enumerate(records)
     ]
 
     sync_cursor.executemany(insert_stmt, values)
@@ -185,13 +177,7 @@ def test_executemany(sync_cursor, model, records):
 
 
 async def test_rollback_async(async_session, model):
-    new = model(
-        name="test",
-        float=1.0,
-        decimal=Decimal("1.1"),
-        datetime=datetime_class.now(timezone.utc),
-        boolean=True,
-    )
+    new = model()
     async_session.add(new)
     await async_session.flush()
     await async_session.refresh(new)
@@ -202,13 +188,7 @@ async def test_rollback_async(async_session, model):
 
 
 async def test_no_commit_async(async_engine, model):
-    new = model(
-        name="test",
-        float=1.0,
-        decimal=Decimal("1.1"),
-        datetime=datetime_class.now(timezone.utc),
-        boolean=True,
-    )
+    new = model()
     async with AsyncSession(async_engine) as session:
         session.add(new)
         await session.flush()
@@ -221,13 +201,7 @@ async def test_no_commit_async(async_engine, model):
 
 
 async def test_commit_async(async_engine, model):
-    new = model(
-        name="test",
-        float=1.0,
-        decimal=Decimal("1.1"),
-        datetime=datetime_class.now(timezone.utc),
-        boolean=True,
-    )
+    new = model()
     async with AsyncSession(async_engine) as session:
         session.add(new)
         await session.flush()
@@ -238,62 +212,67 @@ async def test_commit_async(async_engine, model):
         maybe = await session.get(model, new_id)
         assert maybe is not None
 
-    assert new.id == maybe.id
-    assert new.name == maybe.name
-    assert new.float == maybe.float
-    assert new.decimal == maybe.decimal
-    assert new.datetime == maybe.datetime
-    assert new.boolean is maybe.boolean
+    for key in model.__dataclass_fields__:
+        assert getattr(new, key) == getattr(maybe, key)
 
 
 async def test_autocommit_async(async_raw_connection, async_session, model):
-    new = model(
-        name="test",
-        float=1.0,
-        decimal=Decimal("1.1"),
-        datetime=datetime_class.now(timezone.utc).replace(tzinfo=None),
-        boolean=True,
-    )
-
-    param = {
+    new = model()
+    insert_param = {
         "name": new.name,
         "float": new.float,
         "decimal": new.decimal,
         "datetime": new.datetime,
+        "date": new.date,
+        "time": new.time,
         "boolean": new.boolean,
+        "unique": new.unique,
     }
+    select_param = {"unique": new.unique}
     insert_stmt = sa.insert(model).values(
         name=sa.bindparam("name"),
         float=sa.bindparam("float"),
         decimal=sa.bindparam("decimal"),
         datetime=sa.bindparam("datetime"),
+        date=sa.bindparam("date"),
+        time=sa.bindparam("time"),
         boolean=sa.bindparam("boolean"),
+        unique=sa.bindparam("unique"),
     )
     select_stmt = (
         sa.select(model)
         .with_only_columns(
-            model.name, model.float, model.decimal, model.datetime, model.boolean
+            model.name,
+            model.float,
+            model.decimal,
+            model.datetime,
+            model.date,
+            model.time,
+            model.boolean,
+            model.unique,
         )
-        .where(
-            model.name == sa.bindparam("name", type_=sa.String()),
-            model.float == sa.bindparam("float", type_=sa.Float()),
-            model.decimal == sa.bindparam("decimal", type_=sa.Numeric()),
-            model.datetime
-            == sa.bindparam("datetime", type_=sa.DateTime(timezone=False)),
-            model.boolean == sa.bindparam("boolean", type_=sa.Boolean()),
-        )
+        .where(model.unique == sa.bindparam("unique", type_=sa.String()))
         .order_by(model.datetime.desc())
     )
 
     async_raw_connection.autocommit = True
     assert async_raw_connection.autocommit is True
     async with async_raw_connection.cursor() as cursor:
-        await cursor.execute(insert_stmt, param)
+        await cursor.execute(insert_stmt, insert_param)
         await cursor.fetchall()
 
-    fetch = await async_session.execute(select_stmt, param)
+    fetch = await async_session.execute(select_stmt, select_param)
     row = fetch.one()
-    assert row == (new.name, new.float, new.decimal, new.datetime, new.boolean)
+    assert row == (
+        new.name,
+        new.float,
+        new.decimal,
+        new.datetime,
+        new.date,
+        new.time,
+        new.boolean,
+        new.unique,
+    )
 
 
 async def test_fetchone_async(async_cursor, model, records):
@@ -308,7 +287,10 @@ async def test_fetchone_async(async_cursor, model, records):
         records[0].float,
         records[0].decimal,
         records[0].datetime,
+        records[0].date,
+        records[0].time,
         records[0].boolean,
+        records[0].unique,
     )
 
 
@@ -336,7 +318,10 @@ async def test_executemany_async(async_cursor, model, records):
         float=sa.bindparam("float"),
         decimal=sa.bindparam("decimal"),
         datetime=sa.bindparam("datetime"),
+        date=sa.bindparam("date"),
+        time=sa.bindparam("time"),
         boolean=sa.bindparam("boolean"),
+        unique=sa.bindparam("unique"),
     )
     values = [
         {
@@ -344,9 +329,12 @@ async def test_executemany_async(async_cursor, model, records):
             "float": x.float,
             "decimal": x.decimal,
             "datetime": x.datetime,
+            "date": x.date,
+            "time": x.time,
             "boolean": x.boolean,
+            "unique": f"{x.unique}_{idx}",
         }
-        for x in records
+        for idx, x in enumerate(records)
     ]
 
     await async_cursor.executemany(insert_stmt, values)
