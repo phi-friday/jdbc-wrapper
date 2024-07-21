@@ -93,7 +93,6 @@ def test_autocommit(sync_raw_connection, sync_session, model):
     assert sync_raw_connection.autocommit is True
     with sync_raw_connection.cursor() as cursor:
         cursor.execute(insert_stmt, insert_param)
-        cursor.fetchall()
 
     fetch = sync_session.execute(select_stmt, select_param)
     row = fetch.one()
@@ -259,7 +258,6 @@ async def test_autocommit_async(async_raw_connection, async_session, model):
     assert async_raw_connection.autocommit is True
     async with async_raw_connection.cursor() as cursor:
         await cursor.execute(insert_stmt, insert_param)
-        await cursor.fetchall()
 
     fetch = await async_session.execute(select_stmt, select_param)
     row = fetch.one()
