@@ -14,8 +14,12 @@ $ pip install "jdbc-wrapper @ git+https://github.com/phi-friday/jdbc-wrapper.git
 see [examples](https://github.com/phi-friday/jdbc-wrapper/tree/main/examples)
 
 ## TODO
-* [ ] tests
-* [ ] sqlalchemy dialect
+* [ ] more tests
+> 1. support mssql
+> 2. postgresql thread test in github action(why..?)
+* [ ] support mssql(macos m1 docker issue...)
+* [ ] more sqlalchemy dialect
+* [ ] datetime, date, time type issue
 
 ## License
 
