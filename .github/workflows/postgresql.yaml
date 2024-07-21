@@ -1,16 +1,12 @@
 name: postgresql
 
 on:
-  push:
-    branches: [dev]
-    paths:
-      - "**.py"
-      - ".github/workflows/check*.yaml"
-  pull_request:
-    branches: [dev]
-    paths:
-      - "**.py"
-      - ".github/workflows/check*.yaml"
+  workflow_call: 
+    inputs:
+      python-version:
+        description: 'Python version'
+        required: true
+        type: string
 
 jobs:
   load-driver:
@@ -56,10 +52,6 @@ jobs:
         ports:
           - 5432:5432
 
-    strategy:
-      matrix:
-        python-version: ["3.12"] #["3.8", "3.9", "3.10", "3.11", "3.12"]
-
     steps:
       - uses: actions/checkout@v4
 
@@ -75,7 +67,7 @@ jobs:
         uses: phi-friday/install-rye@v1.5
         id: install-rye
         with:
-          python_version: ${{ matrix.python-version }}
+          python_version: ${{ inputs.python-version }}
           use_uv: true
 
       - name: Install dependencies

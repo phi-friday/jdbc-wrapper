@@ -1,0 +1,32 @@
+name: database test
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - "**.py"
+      - ".github/workflows/*.yaml"
+  pull_request:
+    branches: [dev]
+    paths:
+      - "**.py"
+      - ".github/workflows/*.yaml"
+
+jobs:
+  call-sqlite-test:
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    uses: ./.github/workflows/sqlite.yaml
+    with:
+      python-version: ${{ matrix.python-version }}
+
+  call-postgresql-test:
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    uses: ./.github/workflows/postgresql.yaml
+    with:
+      python-version: ${{ matrix.python-version }}
