@@ -2,12 +2,20 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## ~~how to install~~
-> not yet published
+## warning
+This is a library I created for my own practice.
+If you want to find a proper library, 
+- try `psycopg` (aka `psycopg3`) for `postgresql`, 
+- `pyodbc` and `aioodbc` for `mssql`,
+- `pysqlite` and `aiosqlite` for `sqlite`.
+
+## how to install
 ```shell
 $ pip install jdbc-wrapper
 # or
-$ pip install "jdbc-wrapper @ git+https://github.com/phi-friday/jdbc-wrapper.git"
+$ pip install "jdbc-wrapper[asyncio]"
+# or
+$ pip install "jdbc-wrapper[sqlalchemy]"
 ```
 
 ## how to use
