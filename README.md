@@ -1,6 +1,8 @@
 # jdbc-wrapper
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PyPI version](https://badge.fury.io/py/jdbc-wrapper.svg)](https://badge.fury.io/py/jdbc-wrapper)
+[![python version](https://img.shields.io/pypi/pyversions/jdbc-wrapper.svg)](#)
 
 ## warning
 This is a library I created for my own practice.
