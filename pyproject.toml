@@ -1,12 +1,12 @@
 [project]
 name = "jdbc-wrapper"
-version = "0.1.0"
+version = "0.0.0"
 description = "Add your description here"
 authors = [{ name = "phi", email = "phi.friday@gmail.com" }]
 license = { file = "LICENSE" }
 readme = "README.md"
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 2 - Pre-Alpha",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
