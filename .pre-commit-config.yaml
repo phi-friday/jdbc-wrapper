@@ -1,19 +1,23 @@
 repos:
   - hooks:
-      - id: ruff
-        name: ruff-lint
-    repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.2
+      - id: sync-rye-pre-commit
+        args:
+          - "-a ruff:ruff:v:"
+          - "-a ruff:ruff-format:v:"
+    repo: https://github.com/phi-friday/sync-rye-pre-commit
+    rev: v0.1.5
 
   - hooks:
+      - id: ruff
+        name: ruff-lint
       - id: ruff-format
         name: ruff-format
         args: [--check]
     repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.2
+    rev: v0.5.7
 
   - hooks:
       - id: pyright
         name: pyright
     repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.371
+    rev: v1.1.375

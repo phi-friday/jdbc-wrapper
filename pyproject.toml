@@ -41,7 +41,7 @@ test = [
 managed = true
 dev-dependencies = [
     "ipykernel>=6.29.5",
-    "ruff==0.5.2",
+    "ruff==0.5.7",
     "pre-commit>=3.7.1",
     "jdbc-wrapper[typing,test,asyncio,sqlalchemy]",
 ]
