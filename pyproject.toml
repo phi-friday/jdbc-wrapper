@@ -61,6 +61,9 @@ allow-direct-references = true
 [tool.hatch.build.targets.wheel]
 packages = ["src/jdbc_wrapper"]
 
+[tool.hatch.build.targets.sdist]
+include = ["src/jdbc_wrapper"]
+
 [tool.pytest.ini_options]
 addopts = "-n auto --cov=src/jdbc_wrapper --cov-report html --cov-report=xml"
 testpaths = ["tests"]
